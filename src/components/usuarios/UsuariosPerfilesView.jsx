@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2, Crown } from 'lucide-react';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
+import { getActiveUser } from '../../services/authService';
 
 export default function UsuariosPerfilesView({
   usuarios = [],
@@ -10,6 +11,9 @@ export default function UsuariosPerfilesView({
   onToggleUsuarioActivo,
   onDeleteUsuario
 }) {
+  const activeUser = getActiveUser();
+  const isMasterLogged = activeUser?.email?.toLowerCase() === 'josealarconv@gmail.com';
+
   const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'perfiles'
 
   // New User Form State
@@ -144,10 +148,10 @@ export default function UsuariosPerfilesView({
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-400" />
-            <span>Gestión de Seguridad y Lista Blanca de Acceso</span>
+            <span>Gestión de Seguridad y Jerarquía de Accesos</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Administración de usuarios autorizados y matriz de perfiles de acceso.
+            Jerarquía: SuperAdmin Master &gt; Administradores &gt; Perfiles Operativos.
           </p>
         </div>
 
@@ -206,30 +210,42 @@ export default function UsuariosPerfilesView({
             </thead>
             <tbody className="divide-y divide-zinc-800/60 font-mono">
               {usuarios.map((u) => {
-                const isMasterUser = u.email.toLowerCase() === 'josealarconv@gmail.com';
-                const isAdminUser = u.perfilId === 'PRF-ADMIN';
-                const isProtectedUser = isMasterUser || isAdminUser;
+                const isRowMaster = u.email.toLowerCase() === 'josealarconv@gmail.com';
+                const isRowAdmin = u.perfilId === 'PRF-ADMIN';
+
+                // Rules:
+                // 1. Row Master (josealarconv@gmail.com) can NEVER be deleted or deactivated by anyone.
+                // 2. Row Admin (other admins): ONLY the Master logged user (isMasterLogged) can delete/deactivate them.
+                // 3. Operational users: can be deleted/deactivated by any Admin or Master.
+                const canModifyRow = isRowMaster
+                  ? false
+                  : isRowAdmin
+                  ? isMasterLogged
+                  : true;
 
                 return (
                   <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
                     <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
-                      {u.email}
-                      {isMasterUser && (
-                        <span className="ml-2 text-[10px] text-amber-400 font-sans font-normal bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/60">
-                          Master
-                        </span>
-                      )}
-                      {!isMasterUser && isAdminUser && (
-                        <span className="ml-2 text-[10px] text-blue-400 font-sans font-normal bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-800/60">
-                          Admin Protegido
-                        </span>
-                      )}
+                      <div className="flex items-center space-x-1.5">
+                        <span>{u.email}</span>
+                        {isRowMaster && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-sans font-semibold bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/60">
+                            <Crown className="w-3 h-3 text-amber-400" />
+                            <span>SuperAdmin Master</span>
+                          </span>
+                        )}
+                        {!isRowMaster && isRowAdmin && (
+                          <span className="text-[10px] text-blue-400 font-sans font-normal bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-800/60">
+                            Administrador
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 font-sans text-zinc-200">
                       {u.nombre}
                     </td>
                     <td className="px-4 py-3 font-sans">
-                      <Badge variant={isAdminUser ? 'warning' : 'info'}>{getPerfilNombre(u.perfilId)}</Badge>
+                      <Badge variant={isRowAdmin ? 'warning' : 'info'}>{getPerfilNombre(u.perfilId)}</Badge>
                     </td>
                     <td className="px-4 py-3 text-zinc-400">
                       {u.fechaRegistro || '2025-01-01'}
@@ -252,13 +268,13 @@ export default function UsuariosPerfilesView({
                         <Button
                           variant={u.activo ? 'danger' : 'secondary'}
                           size="xs"
-                          disabled={isProtectedUser}
+                          disabled={!canModifyRow}
                           onClick={() => onToggleUsuarioActivo(u.email)}
                         >
                           {u.activo ? 'Desactivar' : 'Activar Acceso'}
                         </Button>
 
-                        {!isProtectedUser ? (
+                        {canModifyRow ? (
                           <button
                             type="button"
                             onClick={() => setDeletingUserEmail(u.email)}
@@ -268,7 +284,7 @@ export default function UsuariosPerfilesView({
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         ) : (
-                          <Lock className="w-3.5 h-3.5 text-amber-400/80" title="Usuario Administrador Protegido por el Sistema" />
+                          <Lock className="w-3.5 h-3.5 text-zinc-600" title={isRowMaster ? "Usuario Master protegido inmutable" : "Solo el SuperAdmin Master puede gestionar cuentas Administradoras"} />
                         )}
                       </div>
                     </td>
