@@ -82,19 +82,24 @@ export default function App() {
     return <LoginScreen onLoginSuccess={(u) => setCurrentUser(u)} />;
   }
 
-  // Monthly & Search Filtering
+  // Monthly & Global Search Filtering
   const filteredLicitaciones = licitaciones.filter(lic => {
-    if (selectedMonth !== 'ALL') {
-      if (lic.fecha && !lic.fecha.startsWith(selectedMonth)) return false;
-    }
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
+    const q = searchTerm.trim().toLowerCase();
+    
+    // Global search override: If user types a search query, search across ALL historical records
+    if (q) {
       const cli = clientes.find(c => c.id === lic.clienteId);
       const cliNombre = cli ? cli.nombre.toLowerCase() : '';
       const numLic = (lic.numeroLicitacion || lic.id).toLowerCase();
       const notas = (lic.notas || '').toLowerCase();
       return numLic.includes(q) || cliNombre.includes(q) || notas.includes(q);
     }
+
+    // Default: Filter strictly by active month to optimize database queries
+    if (selectedMonth !== 'ALL') {
+      if (lic.fecha && !lic.fecha.startsWith(selectedMonth)) return false;
+    }
+
     return true;
   });
 
