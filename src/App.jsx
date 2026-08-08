@@ -294,6 +294,9 @@ export default function App() {
           <CotizacionesTableView
             cotizaciones={cotizaciones}
             clientes={clientes}
+            licitaciones={licitaciones}
+            detalles={detalles}
+            consultas={consultas}
           />
         )}
 
