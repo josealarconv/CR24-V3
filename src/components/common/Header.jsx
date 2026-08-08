@@ -128,8 +128,8 @@ export default function Header({
             </div>
           </div>
 
-          {/* Network Status, Active User Badge & Logout */}
-          <div className="flex items-center space-x-3 shrink-0">
+          {/* Network Status, Active User Badge & Logout (Right Justified, No Company Logo) */}
+          <div className="flex items-center space-x-3 justify-end shrink-0">
             {/* Connection Status Badge */}
             <div
               className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border ${
@@ -179,12 +179,6 @@ export default function Header({
             >
               <LogOut className="w-4 h-4" />
             </button>
-
-            <img
-              src={ASSETS.COMPANY_LOGO_URL}
-              alt="Orión Logo"
-              className="w-7 h-7 object-contain bg-white p-0.5 rounded shadow-xs hidden sm:block"
-            />
           </div>
 
         </div>
