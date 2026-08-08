@@ -31,7 +31,7 @@ export default function UsuariosPerfilesView({
     { id: 'cotizaciones', name: 'Cotizaciones PDF' },
     { id: 'anexos', name: 'Anexos' },
     { id: 'usuarios', name: 'Usuarios y Acceso' },
-    { id: 'perfiles', name: 'Perfiles RBAC' },
+    { id: 'perfiles', name: 'Perfiles de Acceso' },
     { id: 'configuracion', name: 'Configuración de Empresa' }
   ];
 
@@ -135,7 +135,7 @@ export default function UsuariosPerfilesView({
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-400" />
-            <span>Gestión de Seguridad & Lista Blanca RBAC</span>
+            <span>Gestión de Seguridad y Lista Blanca de Acceso</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
             Administración de usuarios autorizados (Email PK) y matriz de perfiles 100% configurables.
@@ -318,7 +318,7 @@ export default function UsuariosPerfilesView({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Perfil RBAC Asignado</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Perfil de Acceso Asignado</label>
             <select
               value={userPerfilId}
               onChange={(e) => setUserPerfilId(e.target.value)}
@@ -345,7 +345,7 @@ export default function UsuariosPerfilesView({
       <Modal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        title={editingProfile ? `Configurar Perfil: ${editingProfile.nombre}` : 'Crear Perfil RBAC'}
+        title={editingProfile ? `Configurar Perfil: ${editingProfile.nombre}` : 'Crear Perfil de Acceso'}
       >
         <form onSubmit={handleSaveProfileSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
           <div>
