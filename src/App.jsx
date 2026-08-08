@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/common/Header';
+import LoginScreen from './components/auth/LoginScreen';
 import LicitacionesTableView from './components/appsheet/LicitacionesTableView';
 import LicitacionMasterDetail from './components/appsheet/LicitacionMasterDetail';
 import ConsultasTableView from './components/appsheet/ConsultasTableView';
@@ -15,7 +16,7 @@ import {
   saveData,
   addItem
 } from './services/storageService';
-import { getActiveUser, hasPermission } from './services/authService';
+import { getActiveUser, logout } from './services/authService';
 
 export default function App() {
   const [activeView, setActiveView] = useState('licitaciones');
@@ -25,8 +26,8 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('2025-01');
 
-  // RBAC State
-  const [currentUser, setCurrentUser] = useState(getActiveUser());
+  // Auth State
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Data Store
   const [licitaciones, setLicitaciones] = useState([]);
@@ -45,9 +46,13 @@ export default function App() {
   useEffect(() => {
     initStorage();
     loadAllData();
+    setCurrentUser(getActiveUser());
 
     const handleStorageUpdate = () => loadAllData();
-    const handleAuthChange = () => setCurrentUser(getActiveUser());
+    const handleAuthChange = () => {
+      loadAllData();
+      setCurrentUser(getActiveUser());
+    };
 
     window.addEventListener('storage-update', handleStorageUpdate);
     window.addEventListener('auth-state-changed', handleAuthChange);
@@ -72,6 +77,11 @@ export default function App() {
     setInvestigacionesIa(getData('INVESTIGACIONES_IA'));
     setConfiguracion(getData('CONFIGURACION'));
   };
+
+  // If not logged in, render the Login Screen Gate!
+  if (!currentUser) {
+    return <LoginScreen onLoginSuccess={(u) => setCurrentUser(u)} />;
+  }
 
   // Monthly & Search Filtering
   const filteredLicitaciones = licitaciones.filter(lic => {
@@ -203,6 +213,7 @@ export default function App() {
           anexos: anexos.length,
           usuarios: usuarios.length
         }}
+        onLogout={() => setCurrentUser(null)}
       />
 
       {/* 100% Screen Width Main Content Container */}

@@ -4,23 +4,70 @@ const MASTER_DEV_EMAIL = 'josealarconv@gmail.com';
 const ADMIN_PROFILE_ID = 'PRF-ADMIN';
 
 export function getActiveUser() {
-  const email = localStorage.getItem('cr24_active_user_email') || MASTER_DEV_EMAIL;
+  const email = localStorage.getItem('cr24_session_user_email');
+  if (!email) return null;
+
   const usuarios = getData('USUARIOS');
   const user = usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user || !user.activo) {
-    return usuarios.find(u => u.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase()) || {
-      email: MASTER_DEV_EMAIL,
-      nombre: 'José Alarcón',
-      perfilId: ADMIN_PROFILE_ID,
-      activo: true
-    };
+    // If master dev email, always allow
+    if (email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase()) {
+      return {
+        email: MASTER_DEV_EMAIL,
+        nombre: 'José Alarcón',
+        perfilId: ADMIN_PROFILE_ID,
+        activo: true
+      };
+    }
+    return null;
   }
   return user;
 }
 
-export function setActiveUserEmail(email) {
-  localStorage.setItem('cr24_active_user_email', email);
+export function isAuthenticated() {
+  return !!getActiveUser();
+}
+
+export function loginWithEmail(email) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    return { success: false, error: 'Por favor ingresa un correo electrónico válido.' };
+  }
+
+  const usuarios = getData('USUARIOS');
+  const user = usuarios.find(u => u.email.toLowerCase() === cleanEmail);
+
+  // Master Developer Bypass
+  if (cleanEmail === MASTER_DEV_EMAIL.toLowerCase()) {
+    localStorage.setItem('cr24_session_user_email', MASTER_DEV_EMAIL);
+    localStorage.setItem('cr24_active_user_email', MASTER_DEV_EMAIL);
+    window.dispatchEvent(new Event('auth-state-changed'));
+    return { success: true, user: getActiveUser() };
+  }
+
+  if (!user) {
+    return {
+      success: false,
+      error: `Acceso Denegado: El correo (${cleanEmail}) no se encuentra registrado en la Lista Blanca.`
+    };
+  }
+
+  if (!user.activo) {
+    return {
+      success: false,
+      error: `Acceso Bloqueado: La cuenta (${cleanEmail}) se encuentra desactivada por el administrador.`
+    };
+  }
+
+  localStorage.setItem('cr24_session_user_email', user.email);
+  localStorage.setItem('cr24_active_user_email', user.email);
+  window.dispatchEvent(new Event('auth-state-changed'));
+  return { success: true, user };
+}
+
+export function logout() {
+  localStorage.removeItem('cr24_session_user_email');
   window.dispatchEvent(new Event('auth-state-changed'));
 }
 
@@ -34,7 +81,6 @@ export function hasPermission(moduleName, action = 'ver') {
   const user = getActiveUser();
   if (!user || !user.activo) return false;
 
-  // Master Developer & Administrator Profile always have full access
   if (user.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase() || user.perfilId === ADMIN_PROFILE_ID) {
     return true;
   }

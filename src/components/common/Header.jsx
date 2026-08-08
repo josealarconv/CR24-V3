@@ -12,10 +12,11 @@ import {
   Calendar,
   Wifi,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  LogOut
 } from 'lucide-react';
 import { ASSETS } from '../../config/assets';
-import { getActiveUser, getUserProfile } from '../../services/authService';
+import { getActiveUser, getUserProfile, logout } from '../../services/authService';
 
 export default function Header({
   activeView,
@@ -24,7 +25,8 @@ export default function Header({
   setSearchTerm,
   selectedMonth,
   setSelectedMonth,
-  counts = {}
+  counts = {},
+  onLogout
 }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('Sincronizado');
@@ -126,7 +128,7 @@ export default function Header({
             </div>
           </div>
 
-          {/* Network Status & Active User Welcome Widget */}
+          {/* Network Status, Active User Badge & Logout */}
           <div className="flex items-center space-x-3 shrink-0">
             {/* Connection Status Badge */}
             <div
@@ -153,18 +155,30 @@ export default function Header({
               )}
             </div>
 
-            {/* Formal Welcome Badge for Logged-In Active User */}
+            {/* Active User Badge */}
             <div className="flex items-center space-x-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs">
               <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
               <div className="text-left hidden sm:block">
                 <span className="block font-semibold text-zinc-100 text-[11px] leading-tight">
-                  Bienvenido, {activeUser?.nombre}
+                  {activeUser?.nombre || 'Usuario'}
                 </span>
                 <span className="block text-[9px] text-zinc-400 font-mono leading-tight">
                   {userProfile?.nombre} • {activeUser?.email}
                 </span>
               </div>
             </div>
+
+            {/* Logout Action Button */}
+            <button
+              onClick={() => {
+                logout();
+                if (onLogout) onLogout();
+              }}
+              className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-red-400 border border-zinc-800 transition-colors cursor-pointer"
+              title="Cerrar Sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
 
             <img
               src={ASSETS.COMPANY_LOGO_URL}

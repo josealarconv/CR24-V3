@@ -29,7 +29,7 @@ const KEYS = {
   OFFLINE_QUEUE: 'cr24_offline_queue'
 };
 
-// Initialize default storage if empty
+// Initialize default storage if empty or migrate stale user keys
 export function initStorage() {
   if (!localStorage.getItem(KEYS.CONFIGURACION)) {
     localStorage.setItem(KEYS.CONFIGURACION, JSON.stringify(INITIAL_CONFIGURACION));
@@ -58,9 +58,50 @@ export function initStorage() {
   if (!localStorage.getItem(KEYS.PERFILES)) {
     localStorage.setItem(KEYS.PERFILES, JSON.stringify(INITIAL_PERFILES));
   }
-  if (!localStorage.getItem(KEYS.USUARIOS)) {
+
+  // Migrate or initialize Usuarios to ensure josealarconv@gmail.com is present and stale email is removed
+  const rawUsers = localStorage.getItem(KEYS.USUARIOS);
+  if (!rawUsers) {
     localStorage.setItem(KEYS.USUARIOS, JSON.stringify(INITIAL_USUARIOS));
+  } else {
+    try {
+      let usersList = JSON.parse(rawUsers);
+      let modified = false;
+
+      // Replace old jalarconv@gmail.com with josealarconv@gmail.com
+      usersList = usersList.map(u => {
+        if (u.email === 'jalarconv@gmail.com') {
+          modified = true;
+          return { ...u, email: 'josealarconv@gmail.com' };
+        }
+        return u;
+      });
+
+      if (!usersList.some(u => u.email === 'josealarconv@gmail.com')) {
+        usersList.push({
+          email: 'josealarconv@gmail.com',
+          nombre: 'José Alarcón',
+          perfilId: 'PRF-ADMIN',
+          activo: true,
+          fechaRegistro: '2025-01-01'
+        });
+        modified = true;
+      }
+
+      if (modified) {
+        localStorage.setItem(KEYS.USUARIOS, JSON.stringify(usersList));
+      }
+    } catch (e) {
+      localStorage.setItem(KEYS.USUARIOS, JSON.stringify(INITIAL_USUARIOS));
+    }
   }
+
+  // Migrate active user email key if stale
+  const activeEmail = localStorage.getItem('cr24_active_user_email');
+  if (!activeEmail || activeEmail === 'jalarconv@gmail.com') {
+    localStorage.setItem('cr24_active_user_email', 'josealarconv@gmail.com');
+  }
+
   if (!localStorage.getItem(KEYS.NOTAS_LICITACION)) {
     localStorage.setItem(KEYS.NOTAS_LICITACION, JSON.stringify(INITIAL_NOTAS_LICITACION));
   }
