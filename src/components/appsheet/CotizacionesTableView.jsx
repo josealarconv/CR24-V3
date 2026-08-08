@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FileCheck, Download, Eye, FileText, X } from 'lucide-react';
-import { Badge, Card, EmptyState, Button, Modal } from '../ui/Components';
+import { FileCheck, Download, Eye, FileText } from 'lucide-react';
+import { Badge, EmptyState, Modal } from '../ui/Components';
 import { generateCotizacionPDF } from '../../services/pdfService';
 
 export default function CotizacionesTableView({
@@ -13,7 +13,6 @@ export default function CotizacionesTableView({
   const [viewingPdfModal, setViewingPdfModal] = useState(false);
   const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
   const [currentCotizacionTitle, setCurrentCotizacionTitle] = useState('');
-  const [currentDocInstance, setCurrentDocInstance] = useState(null);
 
   const getClienteObj = (clienteId) => {
     return clientes.find(cli => cli.id === clienteId);
@@ -32,7 +31,6 @@ export default function CotizacionesTableView({
     const doc = generateCotizacionPDF(cot, licitacion, cliente, licDetalles, consultas);
     const blobUrl = doc.output('bloburl');
 
-    setCurrentDocInstance(doc);
     setCurrentPdfUrl(blobUrl);
     setCurrentCotizacionTitle(`Cotización ${cot.id || 'N/A'} - v${cot.version || 1}`);
     setViewingPdfModal(true);
@@ -134,7 +132,7 @@ export default function CotizacionesTableView({
         </div>
       )}
 
-      {/* Modal Visualizador Integrado de PDF */}
+      {/* Modal Visualizador Adaptativo Maximizado (92vw x 83vh) sin cabeceras redundantes */}
       <Modal
         isOpen={viewingPdfModal}
         onClose={() => {
@@ -142,30 +140,17 @@ export default function CotizacionesTableView({
           setCurrentPdfUrl(null);
         }}
         title={currentCotizacionTitle || 'Visualizador de Cotización PDF'}
+        maxWidth="max-w-[92vw]"
       >
-        <div className="space-y-3 w-full">
-          <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-xs">
-            <span className="text-zinc-400 font-mono">Documento interactivo generado oficialmente.</span>
-            {currentDocInstance && (
-              <Button
-                variant="primary"
-                size="xs"
-                onClick={() => currentDocInstance.save(`${currentCotizacionTitle}.pdf`)}
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Descargar Archivo PDF</span>
-              </Button>
-            )}
-          </div>
-
+        <div className="w-full">
           {currentPdfUrl ? (
             <iframe
               src={currentPdfUrl}
-              className="w-full h-[70vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-inner"
+              className="w-full h-[83vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
               title="Visualizador de PDF en Tiempo Real"
             />
           ) : (
-            <div className="h-64 flex items-center justify-center text-zinc-500 text-xs">
+            <div className="h-[80vh] flex items-center justify-center text-zinc-500 text-xs">
               Cargando documento PDF...
             </div>
           )}
