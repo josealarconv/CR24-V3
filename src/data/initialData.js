@@ -18,6 +18,7 @@ export const INITIAL_PERFILES = [
     id: 'PRF-ADMIN',
     nombre: 'Administrador',
     descripcion: 'Acceso total a la gestión del sistema, usuarios, perfiles, márgenes y finanzas.',
+    esProtegido: true,
     permisos: {
       licitaciones: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
       clientes: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
@@ -66,7 +67,7 @@ export const INITIAL_PERFILES = [
 
 export const INITIAL_USUARIOS = [
   {
-    email: 'jalarconv@gmail.com',
+    email: 'josealarconv@gmail.com',
     nombre: 'José Alarcón',
     perfilId: 'PRF-ADMIN',
     activo: true,
@@ -167,7 +168,7 @@ export const INITIAL_LICITACIONES = [
     fecha: '2025-01-08',
     fechaCotizacion: '2025-01-14',
     clienteId: 'CLI-CODELCO',
-    moneda: 'CLP', // 'CLP' | 'USD'
+    moneda: 'CLP',
     estatus: 'Consultando proveedores',
     notas: 'Licitación urgente para suministro de instrumentos de calibración en Sewell.',
     notasCotizacion: 'Precios cotizados en CLP. Despacho incluido en Bodega Central Mina El Teniente.',
@@ -208,19 +209,18 @@ export const INITIAL_DETALLES = [
   }
 ];
 
-// Multi-supplier Price Inquiries (Consultas de Precios)
 export const INITIAL_CONSULTAS = [
   {
     id: 'CNS-001',
     detalleId: 'DET-001',
     proveedorId: 'PRV-ELECTRICA',
-    cantidadADespachar: 3, // Partial quantity from Supplier A
+    cantidadADespachar: 3,
     precioBase: 380000,
     costoFlete: 15000,
     costoInternacion: 0,
     costoAfex: 5000,
-    costoUnitarioCompuesto: 400000, // 380000 + 15000 + 0 + 5000
-    subtotalCosto: 1200000, // 3 * 400000
+    costoUnitarioCompuesto: 400000,
+    subtotalCosto: 1200000,
     fecha: '2025-01-09',
     estado: 'Aceptada'
   },
@@ -228,13 +228,13 @@ export const INITIAL_CONSULTAS = [
     id: 'CNS-002',
     detalleId: 'DET-001',
     proveedorId: 'PRV-USACOMP',
-    cantidadADespachar: 7, // Partial quantity from Supplier B to reach 10 units!
+    cantidadADespachar: 7,
     precioBase: 390000,
     costoFlete: 10000,
     costoInternacion: 0,
     costoAfex: 5000,
-    costoUnitarioCompuesto: 405000, // 390000 + 10000 + 0 + 5000
-    subtotalCosto: 2835000, // 7 * 405000
+    costoUnitarioCompuesto: 405000,
+    subtotalCosto: 2835000,
     fecha: '2025-01-09',
     estado: 'Aceptada'
   }
@@ -257,7 +257,6 @@ export const INITIAL_NOTAS_LICITACION = [
   }
 ];
 
-// Historical AI Research Logs (Does not overwrite previous research)
 export const INITIAL_INVESTIGACIONES_IA = [
   {
     id: 'INV-001',
@@ -274,7 +273,6 @@ export const INITIAL_INVESTIGACIONES_IA = [
   }
 ];
 
-// Versioned Formal PDF Quotations
 export const INITIAL_COTIZACIONES = [
   {
     id: 'COT-CDK-0990-V1',

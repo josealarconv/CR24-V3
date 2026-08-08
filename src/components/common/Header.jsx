@@ -12,13 +12,10 @@ import {
   Calendar,
   Wifi,
   WifiOff,
-  RefreshCw,
-  LogOut,
-  ChevronDown
+  RefreshCw
 } from 'lucide-react';
 import { ASSETS } from '../../config/assets';
-import { getActiveUser, getUserProfile, setActiveUserEmail } from '../../services/authService';
-import { getData } from '../../services/storageService';
+import { getActiveUser, getUserProfile } from '../../services/authService';
 
 export default function Header({
   activeView,
@@ -33,8 +30,6 @@ export default function Header({
   const [syncStatus, setSyncStatus] = useState('Sincronizado');
   const [activeUser, setActiveUser] = useState(getActiveUser());
   const [userProfile, setUserProfile] = useState(getUserProfile(activeUser));
-  const [allUsers, setAllUsers] = useState(getData('USUARIOS'));
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -64,11 +59,6 @@ export default function Header({
     };
   }, []);
 
-  const handleSwitchUser = (email) => {
-    setActiveUserEmail(email);
-    setShowUserDropdown(false);
-  };
-
   const navItems = [
     { id: 'licitaciones', label: 'Licitaciones', icon: FileText, count: counts.licitaciones, module: 'licitaciones' },
     { id: 'clientes', label: 'Clientes', icon: Users, count: counts.clientes, module: 'clientes' },
@@ -76,7 +66,7 @@ export default function Header({
     { id: 'consultas', label: 'Consultas de Precios', icon: DollarSign, count: counts.consultas, module: 'consultas' },
     { id: 'cotizaciones', label: 'Cotizaciones PDF', icon: FileCheck, count: counts.cotizaciones, module: 'cotizaciones' },
     { id: 'anexos', label: 'Anexos', icon: Paperclip, count: counts.anexos, module: 'anexos' },
-    { id: 'usuarios', label: 'Usuarios y Perfiles', icon: ShieldCheck, count: counts.usuarios, module: 'usuarios' },
+    { id: 'usuarios', label: 'Usuarios y Acceso', icon: ShieldCheck, count: counts.usuarios, module: 'usuarios' },
     { id: 'configuracion', label: 'Configuración', icon: Settings, module: 'configuracion' }
   ];
 
@@ -136,7 +126,7 @@ export default function Header({
             </div>
           </div>
 
-          {/* Network Status & RBAC User Selector */}
+          {/* Network Status & Active User Welcome Widget */}
           <div className="flex items-center space-x-3 shrink-0">
             {/* Connection Status Badge */}
             <div
@@ -163,51 +153,17 @@ export default function Header({
               )}
             </div>
 
-            {/* Active User Profile Widget */}
-            <div className="relative">
-              <button
-                onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center space-x-2 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-xs transition-colors cursor-pointer"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                <div className="text-left hidden sm:block">
-                  <span className="block font-semibold text-zinc-200 text-[11px] leading-tight">
-                    {activeUser?.nombre}
-                  </span>
-                  <span className="block text-[9px] text-zinc-400 font-mono leading-tight">
-                    {userProfile?.nombre}
-                  </span>
-                </div>
-                <ChevronDown className="w-3 h-3 text-zinc-500" />
-              </button>
-
-              {/* User Selector Dropdown (Testing Whitelisted Access) */}
-              {showUserDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl py-2 z-50">
-                  <div className="px-3 py-1.5 border-b border-zinc-800 text-[10px] uppercase font-mono text-zinc-500">
-                    Cambiar Usuario Activo (Lista Blanca)
-                  </div>
-                  {allUsers.map((u) => (
-                    <button
-                      key={u.email}
-                      onClick={() => handleSwitchUser(u.email)}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-zinc-800 transition-colors ${
-                        u.email === activeUser?.email ? 'bg-zinc-800/60 font-bold text-blue-400' : 'text-zinc-300'
-                      }`}
-                    >
-                      <div>
-                        <span className="block font-medium">{u.nombre}</span>
-                        <span className="block text-[10px] text-zinc-500 font-mono">{u.email}</span>
-                      </div>
-                      {!u.activo && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-950 text-red-400 border border-red-900">
-                          Inactivo
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+            {/* Formal Welcome Badge for Logged-In Active User */}
+            <div className="flex items-center space-x-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs">
+              <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+              <div className="text-left hidden sm:block">
+                <span className="block font-semibold text-zinc-100 text-[11px] leading-tight">
+                  Bienvenido, {activeUser?.nombre}
+                </span>
+                <span className="block text-[9px] text-zinc-400 font-mono leading-tight">
+                  {userProfile?.nombre} • {activeUser?.email}
+                </span>
+              </div>
             </div>
 
             <img

@@ -1,7 +1,6 @@
 import { getData } from './storageService';
 
-// Master developer superadmin email that bypasses any RBAC lockout
-const MASTER_DEV_EMAIL = 'jalarconv@gmail.com';
+const MASTER_DEV_EMAIL = 'josealarconv@gmail.com';
 const ADMIN_PROFILE_ID = 'PRF-ADMIN';
 
 export function getActiveUser() {
@@ -10,7 +9,7 @@ export function getActiveUser() {
   const user = usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user || !user.activo) {
-    return usuarios.find(u => u.email === MASTER_DEV_EMAIL) || {
+    return usuarios.find(u => u.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase()) || {
       email: MASTER_DEV_EMAIL,
       nombre: 'José Alarcón',
       perfilId: ADMIN_PROFILE_ID,
@@ -35,12 +34,11 @@ export function hasPermission(moduleName, action = 'ver') {
   const user = getActiveUser();
   if (!user || !user.activo) return false;
 
-  // Layer 1: Master Developer & Administrator Profile always have full access
+  // Master Developer & Administrator Profile always have full access
   if (user.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase() || user.perfilId === ADMIN_PROFILE_ID) {
     return true;
   }
 
-  // Layer 2: Profile matrix permission check for standard operational profiles
   const profile = getUserProfile(user);
   if (!profile || !profile.permisos) return false;
 
