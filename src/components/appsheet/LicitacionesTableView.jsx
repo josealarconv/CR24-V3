@@ -98,10 +98,10 @@ export default function LicitacionesTableView({
   };
 
   return (
-    <div className="space-y-4 w-full">
-      {/* Title & Action Bar (100% Width) with Contextual Stepper & Doubled Search Input */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 w-full">
-        <div>
+    <div className="space-y-3 w-full">
+      {/* Ultra-Compact 1-Line Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 bg-zinc-900/60 p-3 rounded-xl border border-zinc-800/80 w-full">
+        <div className="shrink-0">
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
             <FileText className="w-4 h-4 text-blue-400" />
             <span>Licitaciones</span>
@@ -111,37 +111,37 @@ export default function LicitacionesTableView({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          {/* Doubled Search Input Box (Wide & Prominent) */}
-          <div className="relative w-full sm:w-[360px] lg:w-[420px]">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
+          {/* Contextual Search Input Box */}
+          <div className="relative min-w-[180px] sm:min-w-[240px] flex-1">
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-zinc-500" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm && setSearchTerm(e.target.value)}
-              placeholder="Buscar por licitación, cliente o descripción..."
-              className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-blue-500 font-sans shadow-inner transition-colors"
+              placeholder="Buscar por licitación, cliente..."
+              className="w-full pl-8 pr-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-blue-500 font-sans shadow-inner"
             />
           </div>
 
-          {/* Contextual Stepper Controls (Supports Month Stepping & Year Stepping) */}
-          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-xs text-zinc-300">
+          {/* Contextual Stepper Controls */}
+          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-xs text-zinc-300">
             <button
               type="button"
               onClick={handlePrevPeriod}
-              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
               title="Período Anterior"
               disabled={selectedMonth === 'ALL'}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
 
-            <div className="flex items-center space-x-1.5 px-1.5">
+            <div className="flex items-center space-x-1 px-1">
               <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth && setSelectedMonth(e.target.value)}
-                className="bg-transparent text-xs text-zinc-100 font-semibold focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs text-zinc-100 font-semibold focus:outline-none cursor-pointer pr-0.5"
               >
                 <optgroup label="Filtrar por Mes">
                   <option value="2026-08" className="bg-zinc-900">Agosto 2026</option>
@@ -161,16 +161,16 @@ export default function LicitacionesTableView({
             <button
               type="button"
               onClick={handleNextPeriod}
-              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
               title="Período Siguiente"
               disabled={selectedMonth === '2026-08'}
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-2 text-xs text-zinc-400">
+          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-400">
             <Filter className="w-3.5 h-3.5" />
             <select
               value={filterEstatus}
@@ -188,9 +188,10 @@ export default function LicitacionesTableView({
             </select>
           </div>
 
-          <Button variant="primary" size="md" onClick={() => setShowNewModal(true)}>
-            <Plus className="w-4 h-4" />
-            <span>Nueva Licitación</span>
+          {/* Compact "Nuevo" Button on Far Right */}
+          <Button variant="primary" size="sm" className="px-3 py-1.5 text-xs shrink-0" onClick={() => setShowNewModal(true)}>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Nuevo</span>
           </Button>
         </div>
       </div>
