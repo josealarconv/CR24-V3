@@ -16,27 +16,29 @@ export default function LicitacionesTableView({
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showNewModal, setShowNewModal] = useState(false);
 
-  // Month Stepper List (Clean Month & Year Labels)
-  const monthsList = [
-    { value: '2026-08', label: 'Agosto 2026' },
-    { value: '2026-07', label: 'Julio 2026' },
-    { value: '2026-06', label: 'Junio 2026' },
-    { value: 'ALL', label: 'Todos los Meses' }
+  // Period List (Supports Month Stepping & Full Year Stepping)
+  const periodList = [
+    { value: '2026-08', label: 'Agosto 2026', mode: 'Mes' },
+    { value: '2026-07', label: 'Julio 2026', mode: 'Mes' },
+    { value: '2026-06', label: 'Junio 2026', mode: 'Mes' },
+    { value: '2026', label: 'Año 2026 Completo', mode: 'Año' },
+    { value: '2025', label: 'Año 2025 Completo', mode: 'Año' },
+    { value: 'ALL', label: 'Todos los Registros', mode: 'Histórico' }
   ];
 
-  const handlePrevMonth = () => {
+  const handlePrevPeriod = () => {
     if (!setSelectedMonth) return;
-    const currentIndex = monthsList.findIndex(m => m.value === selectedMonth);
-    if (currentIndex >= 0 && currentIndex < monthsList.length - 1) {
-      setSelectedMonth(monthsList[currentIndex + 1].value);
+    const currentIndex = periodList.findIndex(p => p.value === selectedMonth);
+    if (currentIndex >= 0 && currentIndex < periodList.length - 1) {
+      setSelectedMonth(periodList[currentIndex + 1].value);
     }
   };
 
-  const handleNextMonth = () => {
+  const handleNextPeriod = () => {
     if (!setSelectedMonth) return;
-    const currentIndex = monthsList.findIndex(m => m.value === selectedMonth);
+    const currentIndex = periodList.findIndex(p => p.value === selectedMonth);
     if (currentIndex > 0) {
-      setSelectedMonth(monthsList[currentIndex - 1].value);
+      setSelectedMonth(periodList[currentIndex - 1].value);
     }
   };
 
@@ -97,7 +99,7 @@ export default function LicitacionesTableView({
 
   return (
     <div className="space-y-4 w-full">
-      {/* Title & Action Bar (100% Width) with Contextual Month Stepper & Search Input */}
+      {/* Title & Action Bar (100% Width) with Contextual Stepper & Doubled Search Input */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 w-full">
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
@@ -109,26 +111,26 @@ export default function LicitacionesTableView({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Contextual Search Input inside Licitaciones Banner */}
-          <div className="relative min-w-[200px] flex-1 sm:flex-none">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          {/* Doubled Search Input Box (Wide & Prominent) */}
+          <div className="relative w-full sm:w-[360px] lg:w-[420px]">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm && setSearchTerm(e.target.value)}
-              placeholder="Buscar licitación, cliente..."
-              className="w-full pl-8 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-zinc-700 font-sans"
+              placeholder="Buscar por licitación, cliente o descripción..."
+              className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-blue-500 font-sans shadow-inner transition-colors"
             />
           </div>
 
-          {/* Contextual Month Navigation Controls inside Licitaciones Context */}
+          {/* Contextual Stepper Controls (Supports Month Stepping & Year Stepping) */}
           <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-xs text-zinc-300">
             <button
               type="button"
-              onClick={handlePrevMonth}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
-              title="Mes Anterior"
+              onClick={handlePrevPeriod}
+              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
+              title="Período Anterior"
               disabled={selectedMonth === 'ALL'}
             >
               <ChevronLeft className="w-4 h-4" />
@@ -141,19 +143,26 @@ export default function LicitacionesTableView({
                 onChange={(e) => setSelectedMonth && setSelectedMonth(e.target.value)}
                 className="bg-transparent text-xs text-zinc-100 font-semibold focus:outline-none cursor-pointer pr-1"
               >
-                {monthsList.map(m => (
-                  <option key={m.value} value={m.value} className="bg-zinc-900 font-sans text-zinc-100">
-                    {m.label}
-                  </option>
-                ))}
+                <optgroup label="Filtrar por Mes">
+                  <option value="2026-08" className="bg-zinc-900">Agosto 2026</option>
+                  <option value="2026-07" className="bg-zinc-900">Julio 2026</option>
+                  <option value="2026-06" className="bg-zinc-900">Junio 2026</option>
+                </optgroup>
+                <optgroup label="Filtrar por Año Completo">
+                  <option value="2026" className="bg-zinc-900">Año 2026 Completo</option>
+                  <option value="2025" className="bg-zinc-900">Año 2025 Completo</option>
+                </optgroup>
+                <optgroup label="Histórico">
+                  <option value="ALL" className="bg-zinc-900">Todos los Registros</option>
+                </optgroup>
               </select>
             </div>
 
             <button
               type="button"
-              onClick={handleNextMonth}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
-              title="Mes Siguiente"
+              onClick={handleNextPeriod}
+              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
+              title="Período Siguiente"
               disabled={selectedMonth === '2026-08'}
             >
               <ChevronRight className="w-4 h-4" />
@@ -161,7 +170,7 @@ export default function LicitacionesTableView({
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-400">
+          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-2 text-xs text-zinc-400">
             <Filter className="w-3.5 h-3.5" />
             <select
               value={filterEstatus}
@@ -190,7 +199,7 @@ export default function LicitacionesTableView({
       {filtered.length === 0 ? (
         <EmptyState
           title="Sin licitaciones para este período"
-          description={selectedMonth === 'ALL' ? "No hay licitaciones registradas." : `No se encontraron licitaciones para ${selectedMonth}. Utiliza las flechas para consultar otro mes.`}
+          description={selectedMonth === 'ALL' ? "No hay licitaciones registradas." : `No se encontraron licitaciones para el período seleccionado (${selectedMonth}). Utiliza las flechas para consultar otro mes o año.`}
           icon={FileText}
         />
       ) : (
