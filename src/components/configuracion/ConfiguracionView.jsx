@@ -28,17 +28,17 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
   };
 
   return (
-    <div className="max-w-3xl space-y-5">
-      <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 backdrop-blur-sm">
-        <h1 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
+    <div className="space-y-5 w-full">
+      <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 backdrop-blur-sm w-full">
+        <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
           <Settings className="w-5 h-5 text-blue-400" />
-          <span>Configuración de Empresa & Sistema</span>
+          <span>Configuración de Empresa y Parámetros Globales</span>
         </h1>
-        <p className="text-xs text-zinc-400 mt-0.5">Parámetros globales que se aplican a cotizaciones e impresiones de PDF.</p>
+        <p className="text-xs text-zinc-400 mt-0.5">Parámetros corporativos que se imprimen por defecto en las cotizaciones PDF.</p>
       </div>
 
-      <Card>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <Card className="w-full">
+        <form onSubmit={handleSubmit} className="space-y-4 w-full">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-zinc-400 mb-1">Razón Social</label>
@@ -89,7 +89,7 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Predetermonadas para Cotizaciones PDF</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Predeterminadas para Cotizaciones PDF</label>
             <textarea
               rows={3}
               value={condiciones}
@@ -98,18 +98,7 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
             />
           </div>
 
-          <div className="pt-3 border-t border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div>
-                <p className="text-[10px] text-zinc-500 mb-1">Logo App</p>
-                <img src={ASSETS.APP_LOGO_URL} alt="App Logo" className="w-8 h-8 object-contain bg-zinc-900 p-1 border border-zinc-800 rounded-md" />
-              </div>
-              <div>
-                <p className="text-[10px] text-zinc-500 mb-1">Logo Empresa (PDF)</p>
-                <img src={ASSETS.COMPANY_LOGO_URL} alt="Company Logo" className="h-8 object-contain bg-white p-1 rounded-md" />
-              </div>
-            </div>
-
+          <div className="pt-3 border-t border-zinc-800 flex justify-end">
             <Button type="submit" variant="primary" size="md">
               {saved ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
               <span>{saved ? 'Guardado' : 'Guardar Cambios'}</span>
