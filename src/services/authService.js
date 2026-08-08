@@ -1,3 +1,5 @@
+import { auth, firebaseConfig } from '../config/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getData } from './storageService';
 
 const MASTER_DEV_EMAIL = 'josealarconv@gmail.com';
@@ -11,7 +13,6 @@ export function getActiveUser() {
   const user = usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user || !user.activo) {
-    // If master dev email, always allow
     if (email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase()) {
       return {
         email: MASTER_DEV_EMAIL,
@@ -38,7 +39,6 @@ export function loginWithEmail(email) {
   const usuarios = getData('USUARIOS');
   const user = usuarios.find(u => u.email.toLowerCase() === cleanEmail);
 
-  // Master Developer Bypass
   if (cleanEmail === MASTER_DEV_EMAIL.toLowerCase()) {
     localStorage.setItem('cr24_session_user_email', MASTER_DEV_EMAIL);
     localStorage.setItem('cr24_active_user_email', MASTER_DEV_EMAIL);
@@ -64,6 +64,29 @@ export function loginWithEmail(email) {
   localStorage.setItem('cr24_active_user_email', user.email);
   window.dispatchEvent(new Event('auth-state-changed'));
   return { success: true, user };
+}
+
+// Native Firebase Google Auth Sign-In
+export async function loginWithGoogle() {
+  try {
+    if (!auth) {
+      throw new Error('Firebase Auth no está inicializado.');
+    }
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(auth, provider);
+    const googleUser = result.user;
+    const cleanEmail = (googleUser.email || '').trim().toLowerCase();
+
+    return loginWithEmail(cleanEmail);
+  } catch (error) {
+    console.error('Error en Firebase Google Sign-In:', error);
+    return {
+      success: false,
+      error: error.message || 'Ocurrió un error al autenticar con tu cuenta de Google en Firebase.'
+    };
+  }
 }
 
 export function logout() {

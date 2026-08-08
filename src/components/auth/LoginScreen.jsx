@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogIn, Lock, AlertCircle, Building2 } from 'lucide-react';
+import { ShieldCheck, LogIn, AlertCircle, Globe } from 'lucide-react';
 import { ASSETS } from '../../config/assets';
-import { loginWithEmail } from '../../services/authService';
+import { loginWithEmail, loginWithGoogle } from '../../services/authService';
 import { Button, Input } from '../ui/Components';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -24,6 +24,19 @@ export default function LoginScreen({ onLoginSuccess }) {
         setErrorMessage(res.error);
       }
     }, 400);
+  };
+
+  const handleGoogleLogin = async () => {
+    setErrorMessage(null);
+    setLoading(true);
+    const res = await loginWithGoogle();
+    setLoading(false);
+
+    if (res.success) {
+      onLoginSuccess(res.user);
+    } else {
+      setErrorMessage(res.error);
+    }
   };
 
   const handleQuickDemoFill = (email) => {
@@ -62,7 +75,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           <div className="border-b border-zinc-800 pb-3 flex items-center justify-between">
             <span className="text-xs font-bold text-zinc-200 uppercase font-mono tracking-wider flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-blue-400" />
-              <span>Acceso Restringido</span>
+              <span>Autenticación Firebase Auth</span>
             </span>
             <span className="text-[10px] text-zinc-500 font-mono">Lista Blanca Activa</span>
           </div>
@@ -73,6 +86,23 @@ export default function LoginScreen({ onLoginSuccess }) {
               <p>{errorMessage}</p>
             </div>
           )}
+
+          {/* Firebase Google Auth Button */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-60"
+          >
+            <Globe className="w-4 h-4 text-blue-600" />
+            <span>Ingresar con Google (Firebase Auth)</span>
+          </button>
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-zinc-800"></div>
+            <span className="flex-shrink mx-3 text-[10px] text-zinc-500 font-mono uppercase">o por correo en lista blanca</span>
+            <div className="flex-grow border-t border-zinc-800"></div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
