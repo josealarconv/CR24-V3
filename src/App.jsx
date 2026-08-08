@@ -261,6 +261,8 @@ export default function App() {
               detalles={detalles}
               selectedMonth={selectedMonth}
               setSelectedMonth={setSelectedMonth}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
               onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
               onAddLicitacion={handleAddLicitacion}
             />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search } from 'lucide-react';
 import { Button, Badge, Card, EmptyState, Modal, Input } from '../ui/Components';
 
 export default function LicitacionesTableView({
@@ -8,15 +8,17 @@ export default function LicitacionesTableView({
   detalles = [],
   selectedMonth = '2026-08',
   setSelectedMonth,
+  searchTerm = '',
+  setSearchTerm,
   onSelectLicitacion,
   onAddLicitacion
 }) {
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showNewModal, setShowNewModal] = useState(false);
 
-  // Month Stepper List
+  // Month Stepper List (Clean Month & Year Labels)
   const monthsList = [
-    { value: '2026-08', label: 'Agosto 2026 (Mes Actual)' },
+    { value: '2026-08', label: 'Agosto 2026' },
     { value: '2026-07', label: 'Julio 2026' },
     { value: '2026-06', label: 'Junio 2026' },
     { value: 'ALL', label: 'Todos los Meses' }
@@ -95,7 +97,7 @@ export default function LicitacionesTableView({
 
   return (
     <div className="space-y-4 w-full">
-      {/* Title & Action Bar (100% Width) with Contextual Month Stepper */}
+      {/* Title & Action Bar (100% Width) with Contextual Month Stepper & Search Input */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 w-full">
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
@@ -108,6 +110,18 @@ export default function LicitacionesTableView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Contextual Search Input inside Licitaciones Banner */}
+          <div className="relative min-w-[200px] flex-1 sm:flex-none">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm && setSearchTerm(e.target.value)}
+              placeholder="Buscar licitación, cliente..."
+              className="w-full pl-8 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-zinc-700 font-sans"
+            />
+          </div>
+
           {/* Contextual Month Navigation Controls inside Licitaciones Context */}
           <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-xs text-zinc-300">
             <button

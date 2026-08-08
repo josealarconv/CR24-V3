@@ -100,19 +100,7 @@ export default function Header({
             </div>
           </div>
 
-          {/* Search & Month Period Filter */}
-          <div className="flex-1 max-w-2xl hidden md:flex items-center space-x-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar licitación, cliente, RUT, proveedor..."
-                className="w-full pl-9 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-zinc-700"
-              />
-            </div>
-          </div>
+
 
           {/* Network Status, Active User Badge & Logout (Right Justified, No Company Logo) */}
           <div className="flex items-center space-x-3 justify-end shrink-0">
