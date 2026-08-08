@@ -78,7 +78,6 @@ export default function App() {
     setConfiguracion(getData('CONFIGURACION'));
   };
 
-  // If not logged in, render the Login Screen Gate!
   if (!currentUser) {
     return <LoginScreen onLoginSuccess={(u) => setCurrentUser(u)} />;
   }
@@ -159,6 +158,13 @@ export default function App() {
 
   const handleToggleUsuarioActivo = (email) => {
     const updated = usuarios.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, activo: !u.activo } : u);
+    saveData('USUARIOS', updated);
+    setUsuarios(updated);
+  };
+
+  const handleDeleteUsuario = (email) => {
+    if (email.toLowerCase() === 'josealarconv@gmail.com') return;
+    const updated = usuarios.filter(u => u.email.toLowerCase() !== email.toLowerCase());
     saveData('USUARIOS', updated);
     setUsuarios(updated);
   };
@@ -296,6 +302,7 @@ export default function App() {
             onSaveUsuario={handleSaveUsuario}
             onSavePerfil={handleSavePerfil}
             onToggleUsuarioActivo={handleToggleUsuarioActivo}
+            onDeleteUsuario={handleDeleteUsuario}
           />
         )}
 

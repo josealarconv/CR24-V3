@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2 } from 'lucide-react';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 
 export default function UsuariosPerfilesView({
@@ -7,7 +7,8 @@ export default function UsuariosPerfilesView({
   perfiles = [],
   onSaveUsuario,
   onSavePerfil,
-  onToggleUsuarioActivo
+  onToggleUsuarioActivo,
+  onDeleteUsuario
 }) {
   const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'perfiles'
 
@@ -16,6 +17,9 @@ export default function UsuariosPerfilesView({
   const [userEmail, setUserEmail] = useState('');
   const [userNombre, setUserNombre] = useState('');
   const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-ADMIN');
+
+  // Delete User State
+  const [deletingUserEmail, setDeletingUserEmail] = useState(null);
 
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -65,6 +69,13 @@ export default function UsuariosPerfilesView({
     setShowNewUserModal(false);
     setUserEmail('');
     setUserNombre('');
+  };
+
+  const confirmDeleteUser = () => {
+    if (deletingUserEmail && onDeleteUsuario) {
+      onDeleteUsuario(deletingUserEmail);
+    }
+    setDeletingUserEmail(null);
   };
 
   const handleOpenEditProfile = (profile) => {
@@ -190,48 +201,70 @@ export default function UsuariosPerfilesView({
                 <th className="px-4 py-3">Perfil Asignado</th>
                 <th className="px-4 py-3">Fecha Registro</th>
                 <th className="px-4 py-3">Estado Acceso</th>
-                <th className="px-4 py-3 text-right">Acción</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60 font-mono">
-              {usuarios.map((u) => (
-                <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
-                    {u.email}
-                  </td>
-                  <td className="px-4 py-3 font-sans text-zinc-200">
-                    {u.nombre}
-                  </td>
-                  <td className="px-4 py-3 font-sans">
-                    <Badge variant="info">{getPerfilNombre(u.perfilId)}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-400">
-                    {u.fechaRegistro || '2025-01-01'}
-                  </td>
-                  <td className="px-4 py-3 font-sans">
-                    {u.activo ? (
-                      <span className="inline-flex items-center space-x-1 text-emerald-400 font-medium">
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Activo (Lista Blanca)</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center space-x-1 text-red-400 font-medium">
-                        <X className="w-3.5 h-3.5" />
-                        <span>Bloqueado</span>
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-sans">
-                    <Button
-                      variant={u.activo ? 'danger' : 'secondary'}
-                      size="xs"
-                      onClick={() => onToggleUsuarioActivo(u.email)}
-                    >
-                      {u.activo ? 'Desactivar' : 'Activar Acceso'}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {usuarios.map((u) => {
+                const isMasterUser = u.email.toLowerCase() === 'josealarconv@gmail.com';
+                return (
+                  <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
+                      {u.email}
+                      {isMasterUser && (
+                        <span className="ml-2 text-[10px] text-amber-400 font-sans font-normal bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/60">
+                          Master
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 font-sans text-zinc-200">
+                      {u.nombre}
+                    </td>
+                    <td className="px-4 py-3 font-sans">
+                      <Badge variant="info">{getPerfilNombre(u.perfilId)}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {u.fechaRegistro || '2025-01-01'}
+                    </td>
+                    <td className="px-4 py-3 font-sans">
+                      {u.activo ? (
+                        <span className="inline-flex items-center space-x-1 text-emerald-400 font-medium">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Activo (Lista Blanca)</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 text-red-400 font-medium">
+                          <X className="w-3.5 h-3.5" />
+                          <span>Bloqueado</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-sans">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button
+                          variant={u.activo ? 'danger' : 'secondary'}
+                          size="xs"
+                          disabled={isMasterUser}
+                          onClick={() => onToggleUsuarioActivo(u.email)}
+                        >
+                          {u.activo ? 'Desactivar' : 'Activar Acceso'}
+                        </Button>
+
+                        {!isMasterUser && (
+                          <button
+                            type="button"
+                            onClick={() => setDeletingUserEmail(u.email)}
+                            className="p-1 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                            title="Eliminar de Lista Blanca"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -285,6 +318,31 @@ export default function UsuariosPerfilesView({
           })}
         </div>
       )}
+
+      {/* Modal Confirmar Eliminación de Usuario */}
+      <Modal
+        isOpen={!!deletingUserEmail}
+        onClose={() => setDeletingUserEmail(null)}
+        title="Eliminar Usuario de Lista Blanca"
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-zinc-300">
+            ¿Estás seguro de que deseas eliminar permanentemente a <span className="font-mono font-bold text-zinc-100">{deletingUserEmail}</span> de la Lista Blanca?
+          </p>
+          <p className="text-xs text-red-400 bg-red-950/30 p-2 rounded border border-red-900/50">
+            Este usuario ya no podrá ingresar a la aplicación ni autenticarse con su cuenta de Google.
+          </p>
+
+          <div className="flex justify-end space-x-2 pt-2">
+            <Button variant="ghost" size="sm" onClick={() => setDeletingUserEmail(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" size="sm" onClick={confirmDeleteUser}>
+              Eliminar Definitivamente
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Crear Usuario */}
       <Modal
