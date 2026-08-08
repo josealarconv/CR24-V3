@@ -1,16 +1,19 @@
 import { getData } from './storageService';
 
+// Master developer superadmin email that bypasses any RBAC lockout
+const MASTER_DEV_EMAIL = 'jalarconv@gmail.com';
+const ADMIN_PROFILE_ID = 'PRF-ADMIN';
+
 export function getActiveUser() {
-  const email = localStorage.getItem('cr24_active_user_email') || 'jalarconv@gmail.com';
+  const email = localStorage.getItem('cr24_active_user_email') || MASTER_DEV_EMAIL;
   const usuarios = getData('USUARIOS');
   const user = usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (!user || !user.activo) {
-    // Fallback to primary admin if not set or inactive
-    return usuarios.find(u => u.email === 'jalarconv@gmail.com') || {
-      email: 'jalarconv@gmail.com',
+    return usuarios.find(u => u.email === MASTER_DEV_EMAIL) || {
+      email: MASTER_DEV_EMAIL,
       nombre: 'José Alarcón',
-      perfilId: 'PRF-ADMIN',
+      perfilId: ADMIN_PROFILE_ID,
       activo: true
     };
   }
@@ -32,6 +35,12 @@ export function hasPermission(moduleName, action = 'ver') {
   const user = getActiveUser();
   if (!user || !user.activo) return false;
 
+  // Layer 1: Master Developer & Administrator Profile always have full access
+  if (user.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase() || user.perfilId === ADMIN_PROFILE_ID) {
+    return true;
+  }
+
+  // Layer 2: Profile matrix permission check for standard operational profiles
   const profile = getUserProfile(user);
   if (!profile || !profile.permisos) return false;
 
@@ -44,6 +53,10 @@ export function hasPermission(moduleName, action = 'ver') {
 export function getPermissionScope(moduleName) {
   const user = getActiveUser();
   if (!user || !user.activo) return 'propios';
+
+  if (user.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase() || user.perfilId === ADMIN_PROFILE_ID) {
+    return 'todos';
+  }
 
   const profile = getUserProfile(user);
   if (!profile || !profile.permisos || !profile.permisos[moduleName]) return 'propios';

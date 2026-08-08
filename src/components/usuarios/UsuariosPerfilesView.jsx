@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, Plus, Edit2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock } from 'lucide-react';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 
 export default function UsuariosPerfilesView({
@@ -71,8 +71,7 @@ export default function UsuariosPerfilesView({
     setEditingProfile(profile);
     setProfileNombre(profile ? profile.nombre : '');
     setProfileDesc(profile ? profile.descripcion || '' : '');
-    
-    // Ensure all modules are present in matrix
+
     const base = createDefaultPermissions();
     if (profile && profile.permisos) {
       Object.keys(base).forEach(modId => {
@@ -89,11 +88,20 @@ export default function UsuariosPerfilesView({
     e.preventDefault();
     if (!profileNombre.trim()) return;
 
+    // If it's PRF-ADMIN, ensure administrative access stays true
+    let finalPermissions = { ...permissionsMatrix };
+    if (editingProfile && editingProfile.id === 'PRF-ADMIN') {
+      finalPermissions.usuarios = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
+      finalPermissions.perfiles = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
+      finalPermissions.configuracion = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
+    }
+
     onSavePerfil({
       id: editingProfile ? editingProfile.id : `PRF-${Date.now().toString().slice(-4)}`,
       nombre: profileNombre.trim(),
       descripcion: profileDesc.trim(),
-      permisos: permissionsMatrix
+      permisos: finalPermissions,
+      esProtegido: editingProfile?.id === 'PRF-ADMIN'
     });
 
     setShowProfileModal(false);
@@ -103,6 +111,11 @@ export default function UsuariosPerfilesView({
   };
 
   const updateMatrixField = (moduleId, action, value) => {
+    // Prevent unchecking admin modules for PRF-ADMIN
+    if (editingProfile?.id === 'PRF-ADMIN' && ['usuarios', 'perfiles', 'configuracion'].includes(moduleId)) {
+      return;
+    }
+
     setPermissionsMatrix(prev => {
       const currentModuleObj = prev[moduleId] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
       return {
@@ -229,37 +242,49 @@ export default function UsuariosPerfilesView({
       {/* TAB 2: MATRIZ DE PERFILES CONFIGURABLE */}
       {activeTab === 'perfiles' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-          {perfiles.map((p) => (
-            <Card key={p.id} className="space-y-3 flex flex-col justify-between w-full">
-              <div>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-zinc-100 font-mono">{p.nombre}</h3>
-                  <Badge variant="default">{p.id}</Badge>
-                </div>
-                <p className="text-xs text-zinc-400 mt-1">{p.descripcion}</p>
-
-                <div className="mt-3 pt-3 border-t border-zinc-800 space-y-1.5 text-[11px]">
-                  <span className="text-zinc-500 block font-mono font-semibold uppercase">Permisos resumidos:</span>
-                  {Object.entries(p.permisos || {}).slice(0, 5).map(([mod, perm]) => (
-                    <div key={mod} className="flex items-center justify-between text-zinc-300">
-                      <span className="capitalize">{mod}:</span>
-                      <span className="font-mono text-zinc-400">
-                        {perm?.ver ? 'Ver ' : ''}{perm?.agregar ? 'C ' : ''}{perm?.editar ? 'E ' : ''}{perm?.eliminar ? 'D ' : ''}
-                        ({perm?.alcance || 'todos'})
-                      </span>
+          {perfiles.map((p) => {
+            const isProtected = p.id === 'PRF-ADMIN' || p.esProtegido;
+            return (
+              <Card key={p.id} className="space-y-3 flex flex-col justify-between w-full">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <h3 className="text-sm font-bold text-zinc-100 font-mono">{p.nombre}</h3>
+                      {isProtected && <Lock className="w-3.5 h-3.5 text-amber-400" title="Perfil protegido del sistema" />}
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <Badge variant={isProtected ? 'warning' : 'default'}>{p.id}</Badge>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-1">{p.descripcion}</p>
 
-              <div className="pt-3 border-t border-zinc-800 flex justify-end">
-                <Button variant="secondary" size="xs" onClick={() => handleOpenEditProfile(p)}>
-                  <Edit2 className="w-3 h-3" />
-                  <span>Configurar Permisos</span>
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  {isProtected && (
+                    <p className="text-[10px] text-amber-400/90 font-mono mt-1.5 bg-amber-950/30 p-1.5 rounded border border-amber-800/40">
+                      Perfil protegido del sistema. Los permisos de administración permanecen activos por seguridad.
+                    </p>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-zinc-800 space-y-1.5 text-[11px]">
+                    <span className="text-zinc-500 block font-mono font-semibold uppercase">Permisos resumidos:</span>
+                    {Object.entries(p.permisos || {}).slice(0, 5).map(([mod, perm]) => (
+                      <div key={mod} className="flex items-center justify-between text-zinc-300">
+                        <span className="capitalize">{mod}:</span>
+                        <span className="font-mono text-zinc-400">
+                          {perm?.ver ? 'Ver ' : ''}{perm?.agregar ? 'C ' : ''}{perm?.editar ? 'E ' : ''}{perm?.eliminar ? 'D ' : ''}
+                          ({perm?.alcance || 'todos'})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-zinc-800 flex justify-end">
+                  <Button variant="secondary" size="xs" onClick={() => handleOpenEditProfile(p)}>
+                    <Edit2 className="w-3 h-3" />
+                    <span>Configurar Permisos</span>
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -344,19 +369,31 @@ export default function UsuariosPerfilesView({
             />
           </div>
 
+          {editingProfile?.id === 'PRF-ADMIN' && (
+            <p className="text-xs text-amber-400 bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/60 font-mono">
+              Los permisos de los módulos de seguridad (Usuarios, Perfiles y Configuración) permanecen bloqueados en este perfil para garantizar el acceso continuo del administrador.
+            </p>
+          )}
+
           <div>
             <h4 className="text-xs font-bold text-zinc-300 uppercase font-mono mb-2">Matriz de Acciones por Módulo</h4>
             <div className="space-y-2.5 bg-zinc-950 p-3 rounded-lg border border-zinc-800">
               {modulesList.map(mod => {
                 const p = permissionsMatrix[mod.id] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
+                const isLockedAdminMod = editingProfile?.id === 'PRF-ADMIN' && ['usuarios', 'perfiles', 'configuracion'].includes(mod.id);
+
                 return (
                   <div key={mod.id} className="p-2 bg-zinc-900/60 rounded border border-zinc-800 text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-zinc-200">{mod.name}</span>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="font-semibold text-zinc-200">{mod.name}</span>
+                        {isLockedAdminMod && <Lock className="w-3 h-3 text-amber-400" title="Protegido por el sistema" />}
+                      </div>
                       <select
                         value={p.alcance || 'todos'}
+                        disabled={isLockedAdminMod}
                         onChange={(e) => updateMatrixField(mod.id, 'alcance', e.target.value)}
-                        className="bg-zinc-950 text-[11px] text-zinc-400 border border-zinc-800 rounded px-1.5 py-0.5"
+                        className="bg-zinc-950 text-[11px] text-zinc-400 border border-zinc-800 rounded px-1.5 py-0.5 disabled:opacity-60"
                       >
                         <option value="todos">Ver Todos</option>
                         <option value="propios">Solo Propios</option>
@@ -367,7 +404,8 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={!!p.ver}
+                          checked={isLockedAdminMod ? true : !!p.ver}
+                          disabled={isLockedAdminMod}
                           onChange={(e) => updateMatrixField(mod.id, 'ver', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
@@ -376,7 +414,8 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={!!p.agregar}
+                          checked={isLockedAdminMod ? true : !!p.agregar}
+                          disabled={isLockedAdminMod}
                           onChange={(e) => updateMatrixField(mod.id, 'agregar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
@@ -385,7 +424,8 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={!!p.editar}
+                          checked={isLockedAdminMod ? true : !!p.editar}
+                          disabled={isLockedAdminMod}
                           onChange={(e) => updateMatrixField(mod.id, 'editar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
@@ -394,7 +434,8 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={!!p.eliminar}
+                          checked={isLockedAdminMod ? true : !!p.eliminar}
+                          disabled={isLockedAdminMod}
                           onChange={(e) => updateMatrixField(mod.id, 'eliminar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
