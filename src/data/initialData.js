@@ -1,4 +1,4 @@
-// Seed Data for CR24 (Suministros Industriales Orión)
+// Real AppSheet Seed Data for Suministros Industriales Orión (CR24)
 
 export const INITIAL_CONFIGURACION = {
   id: 'CFG-001',
@@ -61,8 +61,7 @@ export const INITIAL_PROVEEDORES = [
     email: 'ventas@electrica2000.cl',
     sitioWeb: 'www.electrica2000.cl',
     condicionesComerciales: 'Pago contado / Transferencia. Descuento 5% por volumen.',
-    notas: 'Proveedor confiable de componentes eléctricos e instrumentos.',
-    logo: ''
+    notas: 'Proveedor confiable de componentes eléctricos e instrumentos.'
   },
   {
     id: '35823124',
@@ -72,8 +71,7 @@ export const INITIAL_PROVEEDORES = [
     email: 'contacto@usacomputers.cl',
     sitioWeb: 'www.usacomputers.cl',
     condicionesComerciales: 'Crédito 15 días tras aprobación.',
-    notas: 'Especialista en licitaciones de equipos de medición y cómputo rudo.',
-    logo: ''
+    notas: 'Especialista en licitaciones de equipos de medición y cómputo rudo.'
   },
   {
     id: '7a1cece1',
@@ -83,8 +81,7 @@ export const INITIAL_PROVEEDORES = [
     email: 'ventas@ofimatica.cl',
     sitioWeb: 'www.ofimatica.cl',
     condicionesComerciales: 'Entrega en 48 hrs en RM.',
-    notas: 'Materiales generales de oficina e insumos.',
-    logo: ''
+    notas: 'Materiales generales de oficina e insumos.'
   },
   {
     id: 'df2c33b3',
@@ -94,8 +91,7 @@ export const INITIAL_PROVEEDORES = [
     email: 'cotizaciones@ofimania.cl',
     sitioWeb: 'www.ofimania.cl',
     condicionesComerciales: 'Facturación mensual.',
-    notas: 'Insumos de papelería técnica e imprenta.',
-    logo: ''
+    notas: 'Insumos de papelería técnica e imprenta.'
   },
   {
     id: '834ad65c',
@@ -105,8 +101,7 @@ export const INITIAL_PROVEEDORES = [
     email: 'empresas@mercadolibre.cl',
     sitioWeb: 'www.mercadolibre.cl',
     condicionesComerciales: 'Pago inmediato con tarjeta o transferencia.',
-    notas: 'Plataforma para adquisición rápida de repuestos urgentes.',
-    logo: ''
+    notas: 'Plataforma para adquisición rápida de repuestos urgentes.'
   }
 ];
 
@@ -266,22 +261,5 @@ export const INITIAL_ANEXOS = [
     url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     tipo: 'application/pdf',
     fecha: '2025-01-04'
-  }
-];
-
-export const INITIAL_PRODUCTOS_OPCIONALES = [
-  {
-    id: 'PRD-001',
-    sku: 'FLK-87V',
-    nombre: 'Multímetro Fluke 87V',
-    categoria: 'Instrumentos de Medición',
-    proveedorHabitualId: '7aa2ede0'
-  },
-  {
-    id: 'PRD-002',
-    sku: 'WD40-SPEC-360',
-    nombre: 'Limpiador de Contactos WD-40 Specialist',
-    categoria: 'Químicos y Mantención',
-    proveedorHabitualId: '7a1cece1'
   }
 ];

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import Header from './components/common/Header';
-import Sidebar from './components/common/Sidebar';
-import LicitacionesList from './components/licitaciones/LicitacionesList';
-import LicitacionDetail from './components/licitaciones/LicitacionDetail';
+import AppSheetNavbar from './components/appsheet/AppSheetNavbar';
+import LicitacionesTableView from './components/appsheet/LicitacionesTableView';
+import LicitacionMasterDetail from './components/appsheet/LicitacionMasterDetail';
+import ConsultasTableView from './components/appsheet/ConsultasTableView';
+import CotizacionesTableView from './components/appsheet/CotizacionesTableView';
+import AnexosTableView from './components/appsheet/AnexosTableView';
 import ClientesList from './components/clientes/ClientesList';
 import ProveedoresList from './components/proveedores/ProveedoresList';
 import GeminiAssistantModal from './components/ai/GeminiAssistantModal';
@@ -11,13 +13,11 @@ import {
   initStorage,
   getData,
   saveData,
-  addItem,
-  updateItem,
-  getOfflineQueue
+  addItem
 } from './services/storageService';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('licitaciones'); // 'licitaciones', 'clientes', 'proveedores', 'cotizaciones', 'anexos', 'configuracion'
+  const [activeView, setActiveView] = useState('licitaciones'); // 'licitaciones', 'clientes', 'proveedores', 'consultas', 'cotizaciones', 'anexos', 'configuracion'
   const [selectedLicitacion, setSelectedLicitacion] = useState(null);
 
   // Filters state (Bloque IV)
@@ -26,12 +26,9 @@ export default function App() {
 
   // AI Modal state (Bloque VIII)
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-  const [aiInitialQuery, setAiInitialQuery] = useState('');
+  const [aiQuery, setAiQuery] = useState('');
 
-  // Mobile menu state (Bloque III)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Storage Data
+  // Storage State
   const [licitaciones, setLicitaciones] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -77,18 +74,7 @@ export default function App() {
     return true;
   });
 
-  const handleAddLicitacion = () => {
-    const newLic = {
-      id: `LIC-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-      numeroLicitacion: `ID-${Math.floor(100 + Math.random() * 900)}`,
-      fecha: new Date().toISOString().split('T')[0],
-      fechaCotizacion: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
-      clienteId: clientes[0]?.id || 'eb1b1ad7',
-      estatus: 'Abierto',
-      notas: 'Nueva licitación registrada.',
-      notasCotizacion: 'Validez 5 días hábiles.',
-      contador: 1
-    };
+  const handleAddLicitacion = (newLic) => {
     const updated = addItem('LICITACIONES', newLic);
     setLicitaciones(updated);
     setSelectedLicitacion(newLic);
@@ -102,6 +88,11 @@ export default function App() {
   const handleAddConsulta = (newCns) => {
     const updated = addItem('CONSULTAS', newCns);
     setConsultas(updated);
+  };
+
+  const handleAddAnexo = (newAnx) => {
+    const updated = addItem('ANEXOS', newAnx);
+    setAnexos(updated);
   };
 
   const handleAddCliente = (newCli) => {
@@ -119,134 +110,114 @@ export default function App() {
     setConfiguracion(newConfig);
   };
 
-  const openAiWithQuery = (queryText) => {
-    setAiInitialQuery(queryText);
+  const openAiWithQuery = (prompt) => {
+    setAiQuery(prompt);
     setIsAiModalOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      {/* Header */}
-      <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+      {/* AppSheet Header & Tabbed Navbar */}
+      <AppSheetNavbar
+        activeView={activeView}
+        setActiveView={(v) => {
+          setActiveView(v);
+          setSelectedLicitacion(null);
+        }}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedMonth={selectedMonth}
         setSelectedMonth={setSelectedMonth}
-        openAiModal={() => openAiWithQuery('Analizar estado general de licitaciones')}
-        toggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
+        openAiModal={() => openAiWithQuery('Analizar estado general de licitaciones y proveedores')}
+        counts={{
+          licitaciones: filteredLicitaciones.length,
+          clientes: clientes.length,
+          proveedores: proveedores.length,
+          consultas: consultas.length,
+          cotizaciones: cotizaciones.length,
+          anexos: anexos.length
+        }}
       />
 
-      {/* Main Layout Container */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
-        
-        {/* Navigation Sidebar */}
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            setSelectedLicitacion(null);
-          }}
-          isMobileOpen={isMobileMenuOpen}
-          closeMobileMenu={() => setIsMobileMenuOpen(false)}
-          counts={{
-            licitaciones: filteredLicitaciones.length,
-            clientes: clientes.length,
-            proveedores: proveedores.length,
-            cotizaciones: cotizaciones.length,
-            anexos: anexos.length
-          }}
-        />
-
-        {/* Content Area */}
-        <main className="flex-1 min-w-0">
-          {activeTab === 'licitaciones' && (
-            selectedLicitacion ? (
-              <LicitacionDetail
-                licitacion={selectedLicitacion}
-                cliente={clientes.find(c => c.id === selectedLicitacion.clienteId)}
-                detalles={detalles.filter(d => d.licitacionId === selectedLicitacion.id)}
-                consultas={consultas.filter(c => detalles.some(d => d.id === c.detalleId && d.licitacionId === selectedLicitacion.id))}
-                proveedores={proveedores}
-                anexos={anexos.filter(a => a.entidadId === selectedLicitacion.id)}
-                onBack={() => setSelectedLicitacion(null)}
-                onAddDetalle={handleAddDetalle}
-                onAddConsulta={handleAddConsulta}
-                openAiAssistant={openAiWithQuery}
-              />
-            ) : (
-              <LicitacionesList
-                licitaciones={filteredLicitaciones}
-                clientes={clientes}
-                selectedMonth={selectedMonth}
-                onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
-                onNewLicitacion={handleAddLicitacion}
-              />
-            )
-          )}
-
-          {activeTab === 'clientes' && (
-            <ClientesList
-              clientes={clientes}
-              licitaciones={licitaciones}
-              onAddCliente={handleAddCliente}
-            />
-          )}
-
-          {activeTab === 'proveedores' && (
-            <ProveedoresList
+      {/* Main Workspace */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeView === 'licitaciones' && (
+          selectedLicitacion ? (
+            <LicitacionMasterDetail
+              licitacion={selectedLicitacion}
+              cliente={clientes.find(c => c.id === selectedLicitacion.clienteId)}
+              detalles={detalles.filter(d => d.licitacionId === selectedLicitacion.id)}
+              consultas={consultas.filter(c => detalles.some(d => d.id === c.detalleId && d.licitacionId === selectedLicitacion.id))}
               proveedores={proveedores}
-              consultas={consultas}
-              onAddProveedor={handleAddProveedor}
+              anexos={anexos.filter(a => a.entidadId === selectedLicitacion.id)}
+              onBack={() => setSelectedLicitacion(null)}
+              onAddDetalle={handleAddDetalle}
+              onAddConsulta={handleAddConsulta}
+              onAddAnexo={handleAddAnexo}
+              openAiAssistant={openAiWithQuery}
             />
-          )}
-
-          {activeTab === 'cotizaciones' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
-              <h1 className="text-xl font-bold text-white">Histórico de Cotizaciones Emitidas</h1>
-              <div className="divide-y divide-slate-800">
-                {cotizaciones.map(cot => (
-                  <div key={cot.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-white text-sm">{cot.id}</span>
-                      <p className="text-xs text-slate-400 font-mono">Fecha: {cot.fecha} • Versión {cot.version}</p>
-                    </div>
-                    <span className="font-mono text-emerald-400 font-bold">${cot.total?.toLocaleString('es-CL')}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'anexos' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
-              <h1 className="text-xl font-bold text-white">Repositorio de Anexos & Archivos</h1>
-              <div className="space-y-2">
-                {anexos.map(anx => (
-                  <div key={anx.id} className="p-3 bg-slate-800/60 rounded-lg flex items-center justify-between border border-slate-700">
-                    <span className="text-sm font-medium text-white">{anx.nombre}</span>
-                    <span className="text-xs font-mono text-slate-400">{anx.fecha}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'configuracion' && (
-            <ConfiguracionView
-              config={configuracion}
-              onSaveConfig={handleSaveConfig}
+          ) : (
+            <LicitacionesTableView
+              licitaciones={filteredLicitaciones}
+              clientes={clientes}
+              detalles={detalles}
+              selectedMonth={selectedMonth}
+              onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
+              onAddLicitacion={handleAddLicitacion}
             />
-          )}
-        </main>
-      </div>
+          )
+        )}
+
+        {activeView === 'clientes' && (
+          <ClientesList
+            clientes={clientes}
+            licitaciones={licitaciones}
+            onAddCliente={handleAddCliente}
+          />
+        )}
+
+        {activeView === 'proveedores' && (
+          <ProveedoresList
+            proveedores={proveedores}
+            consultas={consultas}
+            onAddProveedor={handleAddProveedor}
+          />
+        )}
+
+        {activeView === 'consultas' && (
+          <ConsultasTableView
+            consultas={consultas}
+            proveedores={proveedores}
+            detalles={detalles}
+          />
+        )}
+
+        {activeView === 'cotizaciones' && (
+          <CotizacionesTableView
+            cotizaciones={cotizaciones}
+            clientes={clientes}
+          />
+        )}
+
+        {activeView === 'anexos' && (
+          <AnexosTableView
+            anexos={anexos}
+          />
+        )}
+
+        {activeView === 'configuracion' && (
+          <ConfiguracionView
+            config={configuracion}
+            onSaveConfig={handleSaveConfig}
+          />
+        )}
+      </main>
 
       {/* Gemini AI Modal */}
       <GeminiAssistantModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
-        initialQuery={aiInitialQuery}
+        initialQuery={aiQuery}
         contextData={{
           totalLicitaciones: licitaciones.length,
           totalClientes: clientes.length,
