@@ -207,6 +207,9 @@ export default function UsuariosPerfilesView({
             <tbody className="divide-y divide-zinc-800/60 font-mono">
               {usuarios.map((u) => {
                 const isMasterUser = u.email.toLowerCase() === 'josealarconv@gmail.com';
+                const isAdminUser = u.perfilId === 'PRF-ADMIN';
+                const isProtectedUser = isMasterUser || isAdminUser;
+
                 return (
                   <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
                     <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
@@ -216,12 +219,17 @@ export default function UsuariosPerfilesView({
                           Master
                         </span>
                       )}
+                      {!isMasterUser && isAdminUser && (
+                        <span className="ml-2 text-[10px] text-blue-400 font-sans font-normal bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-800/60">
+                          Admin Protegido
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-sans text-zinc-200">
                       {u.nombre}
                     </td>
                     <td className="px-4 py-3 font-sans">
-                      <Badge variant="info">{getPerfilNombre(u.perfilId)}</Badge>
+                      <Badge variant={isAdminUser ? 'warning' : 'info'}>{getPerfilNombre(u.perfilId)}</Badge>
                     </td>
                     <td className="px-4 py-3 text-zinc-400">
                       {u.fechaRegistro || '2025-01-01'}
@@ -244,13 +252,13 @@ export default function UsuariosPerfilesView({
                         <Button
                           variant={u.activo ? 'danger' : 'secondary'}
                           size="xs"
-                          disabled={isMasterUser}
+                          disabled={isProtectedUser}
                           onClick={() => onToggleUsuarioActivo(u.email)}
                         >
                           {u.activo ? 'Desactivar' : 'Activar Acceso'}
                         </Button>
 
-                        {!isMasterUser && (
+                        {!isProtectedUser ? (
                           <button
                             type="button"
                             onClick={() => setDeletingUserEmail(u.email)}
@@ -259,6 +267,8 @@ export default function UsuariosPerfilesView({
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
+                        ) : (
+                          <Lock className="w-3.5 h-3.5 text-amber-400/80" title="Usuario Administrador Protegido por el Sistema" />
                         )}
                       </div>
                     </td>

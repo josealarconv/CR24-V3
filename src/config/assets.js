@@ -1,6 +1,6 @@
 export const ASSETS = {
   APP_NAME: 'CR24',
-  APP_VERSION: 'v3.1.8',
+  APP_VERSION: 'v3.1.9',
   APP_SUBTITLE: 'Sistema de Gestión de Licitaciones, Proveedores y Cotizaciones',
   COMPANY_NAME: 'Suministros Industriales Orión',
   COMPANY_RUT: '76.543.210-9',
