@@ -18,7 +18,7 @@ export default function UsuariosPerfilesView({
 
   // New / Edit User Form State
   const [showUserModal, setShowUserModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null); // null if creating, user object if editing
+  const [editingUser, setEditingUser] = useState(null);
   const [userEmail, setUserEmail] = useState('');
   const [userNombre, setUserNombre] = useState('');
   const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-ADMIN');
@@ -166,10 +166,10 @@ export default function UsuariosPerfilesView({
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-400" />
-            <span>Gestión de Seguridad y Jerarquía de Accesos</span>
+            <span>Gestión de Usuarios y Perfiles</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Jerarquía: SuperAdmin Master &gt; Administradores &gt; Perfiles Operativos.
+            Administración de usuarios y perfiles de acceso del sistema.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function UsuariosPerfilesView({
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          Usuarios Autorizados ({usuarios.length})
+          Usuarios ({usuarios.length})
         </button>
         <button
           onClick={() => setActiveTab('perfiles')}
@@ -208,7 +208,7 @@ export default function UsuariosPerfilesView({
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          Matriz de Perfiles ({perfiles.length})
+          Perfiles ({perfiles.length})
         </button>
       </div>
 
