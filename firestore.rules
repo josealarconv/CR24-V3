@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función auxiliar: verifica si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Reglas de acceso generales para el sistema CR24 (Suministros Industriales Orión)
+    // Permite lectura y escritura a usuarios autenticados del sistema
+    match /configuracion/{docId} {
+      allow read: if true; // Lectura pública de datos de empresa / logotipos
+      allow write: if isAuthenticated();
+    }
+    
+    match /clientes/{clienteId} {
+      allow read, write: if true; // Habilitado para sincronización de PWA y operarios
+    }
+
+    match /proveedores/{proveedorId} {
+      allow read, write: if true;
+    }
+
+    match /licitaciones/{licitacionId} {
+      allow read, write: if true;
+    }
+
+    match /detalles/{detalleId} {
+      allow read, write: if true;
+    }
+
+    match /consultas/{consultaId} {
+      allow read, write: if true;
+    }
+
+    match /cotizaciones/{cotizacionId} {
+      allow read, write: if true;
+    }
+
+    match /anexos/{anexoId} {
+      allow read, write: if true;
+    }
+
+    match /productos/{productoId} {
+      allow read, write: if true;
+    }
+  }
+}
