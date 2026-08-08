@@ -6,9 +6,7 @@ import {
   FileCheck,
   Paperclip,
   Settings,
-  X,
-  Layers,
-  Sparkles
+  X
 } from 'lucide-react';
 import { ASSETS } from '../../config/assets';
 
@@ -30,11 +28,11 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Desktop Sidebar (Bloque III punto 22) */}
-      <aside className="hidden lg:flex flex-col w-64 bg-slate-900 border-r border-slate-800 shrink-0 min-h-[calc(100vh-4rem)]">
-        <div className="p-4 space-y-1">
-          <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Navegación Principal
+      {/* Desktop Sidebar (Bloque III Punto 22) */}
+      <aside className="hidden lg:flex flex-col w-60 bg-zinc-950 border-r border-zinc-900 shrink-0 min-h-[calc(100vh-3.5rem)] select-none">
+        <div className="p-3 space-y-1">
+          <p className="px-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+            Módulos CR24
           </p>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -43,20 +41,20 @@ export default function Sidebar({
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-sm'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 shadow-xs'
+                    : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-200'
                 }`}
               >
-                <div className="flex items-center space-x-3">
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                <div className="flex items-center space-x-2.5">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-zinc-500'}`} />
                   <span>{item.label}</span>
                 </div>
                 {item.count !== undefined && item.count > 0 && (
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-mono ${
-                      isActive ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                      isActive ? 'bg-zinc-800 text-zinc-200' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
                     }`}
                   >
                     {item.count}
@@ -67,42 +65,42 @@ export default function Sidebar({
           })}
         </div>
 
-        {/* Bottom Company Info */}
-        <div className="mt-auto p-4 border-t border-slate-800">
-          <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700/60">
-            <p className="text-xs font-semibold text-slate-200">{ASSETS.COMPANY_NAME}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">RUT: {ASSETS.COMPANY_RUT}</p>
-            <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+        {/* Footer info */}
+        <div className="mt-auto p-3 border-t border-zinc-900">
+          <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80">
+            <p className="text-xs font-semibold text-zinc-200">{ASSETS.COMPANY_NAME}</p>
+            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">RUT: {ASSETS.COMPANY_RUT}</p>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
               <span>{ASSETS.APP_NAME} {ASSETS.APP_VERSION}</span>
-              <span className="text-emerald-400 font-semibold">Ready</span>
+              <span className="text-emerald-400 font-medium">Cloud PWA</span>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Mobile Drawer (Bloque III punto 24) */}
+      {/* Mobile Drawer (Bloque III Punto 24) */}
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm"
             onClick={closeMobileMenu}
           />
 
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-slate-900 border-r border-slate-800 p-4">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-zinc-950 border-r border-zinc-800 p-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div className="flex items-center space-x-2">
                 <img
                   src={ASSETS.APP_LOGO_URL}
                   alt="App Logo"
-                  className="w-7 h-7 object-contain"
+                  className="w-6 h-6 object-contain"
                 />
-                <span className="font-bold text-white text-base">{ASSETS.APP_NAME}</span>
+                <span className="font-bold text-zinc-100 text-sm">{ASSETS.APP_NAME}</span>
               </div>
               <button
                 onClick={closeMobileMenu}
-                className="p-1 rounded-md text-slate-400 hover:text-white"
+                className="p-1 rounded-md text-zinc-400 hover:text-zinc-100"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -117,18 +115,18 @@ export default function Sidebar({
                       setActiveTab(item.id);
                       closeMobileMenu();
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium ${
                       isActive
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                        ? 'bg-zinc-900 text-zinc-100 border border-zinc-800'
+                        : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-200'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <Icon className="w-5 h-5" />
+                    <div className="flex items-center space-x-2.5">
+                      <Icon className="w-4 h-4" />
                       <span>{item.label}</span>
                     </div>
                     {item.count !== undefined && item.count > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
                         {item.count}
                       </span>
                     )}
@@ -137,9 +135,9 @@ export default function Sidebar({
               })}
             </nav>
 
-            <div className="mt-auto pt-4 border-t border-slate-800">
-              <p className="text-xs text-slate-400">{ASSETS.COMPANY_NAME}</p>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5">{ASSETS.APP_VERSION}</p>
+            <div className="mt-auto pt-4 border-t border-zinc-900">
+              <p className="text-xs text-zinc-400">{ASSETS.COMPANY_NAME}</p>
+              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{ASSETS.APP_VERSION}</p>
             </div>
           </div>
         </div>

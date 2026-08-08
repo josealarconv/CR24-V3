@@ -3,20 +3,16 @@ import {
   ArrowLeft,
   Plus,
   Building,
-  Calendar,
-  FileCheck,
-  Share2,
   Download,
   Sparkles,
   Paperclip,
-  DollarSign,
-  MessageSquare,
+  Share2,
   Send,
-  Trash2,
-  Edit,
+  MessageSquare,
   ExternalLink
 } from 'lucide-react';
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
+import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
 export default function LicitacionDetail({
@@ -30,16 +26,14 @@ export default function LicitacionDetail({
   onAddDetalle,
   onAddConsulta,
   onAddAnexo,
-  onUpdateStatus,
   openAiAssistant
 }) {
-  const [activeTab, setActiveTab] = useState('detalles'); // 'detalles', 'consultas', 'anexos', 'cotizacion'
+  const [activeTab, setActiveTab] = useState('detalles');
   const [newDesc, setNewDesc] = useState('');
   const [newCant, setNewCant] = useState(1);
   const [showConsultaModal, setShowConsultaModal] = useState(false);
   const [selectedDetalle, setSelectedDetalle] = useState(null);
 
-  // Form states for consulta
   const [selectedProveedorId, setSelectedProveedorId] = useState('');
   const [precioInput, setPrecioInput] = useState('');
 
@@ -98,60 +92,57 @@ export default function LicitacionDetail({
 
   const getProveedorNombre = (id) => {
     const prov = proveedores.find(p => p.id === id);
-    return prov ? prov.nombre : 'Proveedor Generico';
+    return prov ? prov.nombre : 'Proveedor Genérico';
   };
 
   return (
     <div className="space-y-5 pb-12">
-      {/* Top Navigation & Status Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+      {/* Top Header & Navigation */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 backdrop-blur-sm">
         <div className="flex items-center space-x-3">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="Volver a la lista"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
+            title="Volver"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="text-lg font-bold text-zinc-100">
                 Licitación {licitacion.numeroLicitacion || licitacion.id}
               </h1>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30 font-medium">
-                {licitacion.estatus}
-              </span>
+              <Badge variant="info">{licitacion.estatus}</Badge>
             </div>
-            <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-              <span>Cliente: <strong className="text-slate-200">{cliente?.nombre || 'N/A'}</strong></span>
+            <p className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
+              <span>Cliente: <strong className="text-zinc-200">{cliente?.nombre || 'N/A'}</strong></span>
               <span>•</span>
               <span>Ingreso: <span className="font-mono">{licitacion.fecha}</span></span>
             </p>
           </div>
         </div>
 
-        {/* Quick Action Toolbar */}
+        {/* Action Toolbar */}
         <div className="flex items-center space-x-2">
-          <button
-            onClick={() => openAiAssistant(`Analiza esta licitación ${licitacion.numeroLicitacion} para el cliente ${cliente?.nombre} y sugiere proveedores óptimos.`)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 rounded-lg text-xs font-semibold"
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => openAiAssistant(`Analiza esta licitación ${licitacion.numeroLicitacion} para el cliente ${cliente?.nombre} y sugiere proveedores.`)}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             <span>Investigar con Gemini</span>
-          </button>
+          </Button>
 
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
-          >
+          {/* SINGLE PRIMARY ACTION BUTTON (Bloque III Punto 26) */}
+          <Button variant="primary" size="sm" onClick={handleDownloadPDF}>
             <Download className="w-3.5 h-3.5" />
             <span>Descargar PDF</span>
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Tabs Menu */}
-      <div className="flex border-b border-slate-800 space-x-4">
+      {/* Tabs Sub-Navigation */}
+      <div className="flex border-b border-zinc-800 space-x-4">
         {[
           { id: 'detalles', label: `Productos / Detalles (${detalles.length})` },
           { id: 'consultas', label: `Consultas de Precios (${consultas.length})` },
@@ -161,10 +152,10 @@ export default function LicitacionDetail({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+            className={`pb-2.5 text-xs font-medium border-b-2 transition-all cursor-pointer ${
               activeTab === tab.id
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-blue-500 text-zinc-100 font-semibold'
+                : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             {tab.label}
@@ -172,17 +163,15 @@ export default function LicitacionDetail({
         ))}
       </div>
 
-      {/* TAB 1: DETALLES DE LICITACION */}
+      {/* TAB 1: DETALLES DE LICITACIÓN */}
       {activeTab === 'detalles' && (
         <div className="space-y-4">
-          {/* Add New Line Item Form */}
-          <form onSubmit={handleCreateDetalle} className="flex gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-            <input
-              type="text"
+          <form onSubmit={handleCreateDetalle} className="flex gap-2 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/80">
+            <Input
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Descripción del producto o insumo..."
-              className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1"
             />
             <input
               type="number"
@@ -190,41 +179,36 @@ export default function LicitacionDetail({
               value={newCant}
               onChange={(e) => setNewCant(e.target.value)}
               placeholder="Cant."
-              className="w-20 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-400 focus:outline-none text-center"
+              className="w-20 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none text-center font-mono"
             />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5"
-            >
-              <Plus className="w-4 h-4" />
+            <Button type="submit" variant="secondary" size="sm">
+              <Plus className="w-3.5 h-3.5" />
               <span>Agregar Ítem</span>
-            </button>
+            </Button>
           </form>
 
-          {/* List of Details */}
           {detalles.length === 0 ? (
-            <p className="text-center py-8 text-slate-500 text-sm">No hay ítems agregados a esta licitación.</p>
+            <p className="text-center py-8 text-zinc-500 text-xs">No hay ítems agregados a esta licitación.</p>
           ) : (
             <div className="space-y-3">
               {detalles.map((item, idx) => {
                 const itemConsultas = consultas.filter(c => c.detalleId === item.id);
                 return (
-                  <div key={item.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                  <Card key={item.id} className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <span className="text-xs text-blue-400 font-mono font-bold">Ítem #{idx + 1}</span>
-                        <h3 className="text-base font-semibold text-white mt-0.5">{item.descripcion}</h3>
+                        <span className="text-[11px] text-blue-400 font-mono font-bold">Ítem #{idx + 1}</span>
+                        <h3 className="text-sm font-semibold text-zinc-100 mt-0.5">{item.descripcion}</h3>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-slate-400">Cantidad:</span>
-                        <span className="block text-base font-bold text-white font-mono">{item.cantidad}</span>
+                        <span className="text-[10px] text-zinc-500">Cantidad:</span>
+                        <span className="block text-sm font-bold text-zinc-100 font-mono">{item.cantidad}</span>
                       </div>
                     </div>
 
-                    {/* Associated Consultas Summary */}
-                    <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
+                    <div className="bg-zinc-950/60 p-3 rounded-lg border border-zinc-800/80">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-400">Precios Recibidos de Proveedores:</span>
+                        <span className="text-xs font-semibold text-zinc-400">Precios Recibidos de Proveedores:</span>
                         <button
                           onClick={() => {
                             setSelectedDetalle(item);
@@ -232,25 +216,25 @@ export default function LicitacionDetail({
                           }}
                           className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center space-x-1"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3 h-3" />
                           <span>Consultar Proveedor</span>
                         </button>
                       </div>
 
                       {itemConsultas.length === 0 ? (
-                        <p className="text-xs text-slate-500 italic">No hay consultas de precio registradas para este ítem.</p>
+                        <p className="text-[11px] text-zinc-500 italic">No hay consultas registradas para este ítem.</p>
                       ) : (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           {itemConsultas.map(c => (
-                            <div key={c.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-800/50 last:border-0">
-                              <span className="text-slate-300 font-medium">{getProveedorNombre(c.proveedorId)}</span>
+                            <div key={c.id} className="flex items-center justify-between text-xs py-1 border-b border-zinc-800/50 last:border-0">
+                              <span className="text-zinc-300 font-medium">{getProveedorNombre(c.proveedorId)}</span>
                               <span className="font-mono text-emerald-400 font-bold">${c.precioUnitario?.toLocaleString('es-CL')} / c/u</span>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
@@ -260,168 +244,152 @@ export default function LicitacionDetail({
 
       {/* TAB 2: CONSULTAS DE PRECIOS */}
       {activeTab === 'consultas' && (
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider">Historial de Consultas de Precios de la Licitación</h2>
+        <Card title="Historial de Consultas de Precios de la Licitación">
           {consultas.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4 text-center">Sin consultas registradas.</p>
+            <p className="text-xs text-zinc-500 py-4 text-center">Sin consultas registradas.</p>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-zinc-800/80">
               {consultas.map(c => (
-                <div key={c.id} className="py-3 flex items-center justify-between">
+                <div key={c.id} className="py-2.5 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">{getProveedorNombre(c.proveedorId)}</p>
-                    <p className="text-xs text-slate-400 font-mono">Fecha: {c.fecha} • Cantidad: {c.cantidad}</p>
+                    <p className="text-xs font-semibold text-zinc-100">{getProveedorNombre(c.proveedorId)}</p>
+                    <p className="text-[11px] text-zinc-500 font-mono">Fecha: {c.fecha} • Cantidad: {c.cantidad}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-400 font-mono">${c.total?.toLocaleString('es-CL')}</p>
-                    <p className="text-[11px] text-slate-400">Neto: ${c.subtotal?.toLocaleString('es-CL')} + IVA</p>
+                    <p className="text-xs font-bold text-emerald-400 font-mono">${c.total?.toLocaleString('es-CL')}</p>
+                    <p className="text-[10px] text-zinc-500">Neto: ${c.subtotal?.toLocaleString('es-CL')} + IVA</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       {/* TAB 3: ANEXOS */}
       {activeTab === 'anexos' && (
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Documentos y Anexos Asociados</h2>
-          </div>
+        <Card title="Documentos y Anexos Asociados">
           {anexos.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4 text-center">No hay anexos adjuntos a esta licitación.</p>
+            <p className="text-xs text-zinc-500 py-4 text-center">No hay anexos adjuntos a esta licitación.</p>
           ) : (
             <div className="space-y-2">
               {anexos.map(a => (
-                <div key={a.id} className="flex items-center justify-between p-3 bg-slate-800/60 rounded-lg border border-slate-700">
-                  <div className="flex items-center space-x-3">
-                    <Paperclip className="w-5 h-5 text-blue-400" />
+                <div key={a.id} className="flex items-center justify-between p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-800">
+                  <div className="flex items-center space-x-2.5">
+                    <Paperclip className="w-4 h-4 text-blue-400" />
                     <div>
-                      <p className="text-sm font-semibold text-white">{a.nombre}</p>
-                      <p className="text-xs text-slate-400 font-mono">{a.fecha}</p>
+                      <p className="text-xs font-medium text-zinc-200">{a.nombre}</p>
+                      <p className="text-[10px] text-zinc-500 font-mono">{a.fecha}</p>
                     </div>
                   </div>
                   <a
                     href={a.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200"
+                    className="p-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
-      {/* TAB 4: COTIZACIÓN & COMPARTIR */}
+      {/* TAB 4: COTIZACIÓN & PDF */}
       {activeTab === 'cotizacion' && (
-        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <Card title="Cotización PDF & Envíos Directos">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <div>
+                <p className="text-xs text-zinc-400">Cotización formal lista con membrete de {ASSETS.COMPANY_NAME}</p>
+              </div>
+              <Button variant="primary" size="sm" onClick={handleDownloadPDF}>
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar PDF</span>
+              </Button>
+            </div>
+
             <div>
-              <h2 className="text-lg font-bold text-white">Resumen de Cotización PDF</h2>
-              <p className="text-xs text-slate-400">Cotización formal con membrete de {ASSETS.COMPANY_NAME}</p>
-            </div>
-            <button
-              onClick={handleDownloadPDF}
-              className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Descargar Documento PDF</span>
-            </button>
-          </div>
+              <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Compartir Cotización</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <a
+                  href={generateWhatsAppShareLink({ id: licitacion.id, total: 2558500 }, cliente)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center space-x-2 p-2.5 bg-emerald-950/30 hover:bg-emerald-950/50 text-emerald-300 border border-emerald-800/60 rounded-lg text-xs font-medium transition-all"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Enviar WhatsApp</span>
+                </a>
 
-          {/* Share Links (Bloque VII - Puntos 75-78) */}
+                <a
+                  href={generateEmailShareLink({ id: licitacion.id, total: 2558500 }, cliente)}
+                  className="flex items-center justify-center space-x-2 p-2.5 bg-blue-950/30 hover:bg-blue-950/50 text-blue-300 border border-blue-800/60 rounded-lg text-xs font-medium transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Enviar Correo</span>
+                </a>
+
+                <a
+                  href={generateSMSShareLink({ id: licitacion.id, total: 2558500 }, cliente)}
+                  className="flex items-center justify-center space-x-2 p-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg text-xs font-medium transition-all"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Enviar SMS</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Modal Consulta */}
+      <Modal
+        isOpen={showConsultaModal}
+        onClose={() => setShowConsultaModal(false)}
+        title="Registrar Consulta de Precio"
+      >
+        <form onSubmit={handleCreateConsulta} className="space-y-3">
+          <p className="text-xs text-zinc-400">Ítem: <strong className="text-zinc-200">{selectedDetalle?.descripcion}</strong></p>
+
           <div>
-            <h3 className="text-xs font-semibold text-slate-400 uppercase mb-3">Compartir Cotización Directamente</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <a
-                href={generateWhatsAppShareLink({ id: licitacion.id, total: 2558500 }, cliente)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center space-x-2 p-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold transition-all"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Enviar por WhatsApp</span>
-              </a>
-
-              <a
-                href={generateEmailShareLink({ id: licitacion.id, total: 2558500 }, cliente)}
-                className="flex items-center justify-center space-x-2 p-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-semibold transition-all"
-              >
-                <Send className="w-4 h-4" />
-                <span>Enviar por Correo</span>
-              </a>
-
-              <a
-                href={generateSMSShareLink({ id: licitacion.id, total: 2558500 }, cliente)}
-                className="flex items-center justify-center space-x-2 p-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Enviar por SMS</span>
-              </a>
-            </div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Seleccionar Proveedor</label>
+            <select
+              value={selectedProveedorId}
+              onChange={(e) => setSelectedProveedorId(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+              required
+            >
+              <option value="">-- Seleccionar proveedor --</option>
+              {proveedores.map(p => (
+                <option key={p.id} value={p.id}>{p.nombre}</option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
 
-      {/* Modal Consulta de Precio */}
-      {showConsultaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 space-y-4">
-            <h3 className="text-base font-bold text-white">Registrar Consulta de Precio</h3>
-            <p className="text-xs text-slate-400">Ítem: <strong className="text-slate-200">{selectedDetalle?.descripcion}</strong></p>
-
-            <form onSubmit={handleCreateConsulta} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Seleccionar Proveedor</label>
-                <select
-                  value={selectedProveedorId}
-                  onChange={(e) => setSelectedProveedorId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none"
-                  required
-                >
-                  <option value="">-- Elige un proveedor --</option>
-                  {proveedores.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Precio Unitario Neto (CLP)</label>
-                <input
-                  type="number"
-                  value={precioInput}
-                  onChange={(e) => setPrecioInput(e.target.value)}
-                  placeholder="Ej: 385000"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConsultaModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white"
-                >
-                  Guardar Precio
-                </button>
-              </div>
-            </form>
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Precio Unitario Neto (CLP)</label>
+            <Input
+              type="number"
+              value={precioInput}
+              onChange={(e) => setPrecioInput(e.target.value)}
+              placeholder="Ej: 385000"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end space-x-2 pt-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setShowConsultaModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Guardar Precio
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

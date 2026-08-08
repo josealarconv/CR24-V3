@@ -34,25 +34,25 @@ export default function GeminiAssistantModal({ isOpen, onClose, initialQuery = '
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/80 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-slate-900 border-l border-slate-800 flex flex-col h-full shadow-2xl">
+    <div className="fixed inset-0 z-50 flex justify-end bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="w-full max-w-lg bg-zinc-950 border-l border-zinc-900 flex flex-col h-full shadow-2xl">
         
         {/* Modal Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600">
-              <Sparkles className="w-5 h-5 text-white" />
+        <div className="p-4 border-b border-zinc-900 flex items-center justify-between bg-zinc-900/40">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700">
+              <Sparkles className="w-4 h-4 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Asistente Gemini Flash AI</h2>
-              <p className="text-[11px] text-slate-400">Investigación operacional & sugerencias de proveedores</p>
+              <h2 className="text-sm font-bold text-zinc-100">Asistente Gemini Flash AI</h2>
+              <p className="text-[10px] text-zinc-500">Investigación operacional & sugerencias de proveedores</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -66,18 +66,18 @@ export default function GeminiAssistantModal({ isOpen, onClose, initialQuery = '
               }`}
             >
               <div
-                className={`p-2 rounded-full shrink-0 ${
-                  m.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                className={`p-1.5 rounded-full shrink-0 ${
+                  m.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-blue-400 border border-zinc-700'
                 }`}
               >
-                {m.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {m.sender === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
               </div>
 
               <div
                 className={`p-3 rounded-xl text-xs leading-relaxed max-w-[85%] whitespace-pre-wrap ${
                   m.sender === 'user'
                     ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-slate-800 text-slate-200 border border-slate-700'
+                    : 'bg-zinc-900 text-zinc-200 border border-zinc-800'
                 }`}
               >
                 {m.text}
@@ -86,7 +86,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, initialQuery = '
           ))}
 
           {loading && (
-            <div className="flex items-center space-x-2 text-xs text-indigo-400 py-2">
+            <div className="flex items-center space-x-2 text-xs text-blue-400 py-2">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Gemini está razonando...</span>
             </div>
@@ -94,20 +94,20 @@ export default function GeminiAssistantModal({ isOpen, onClose, initialQuery = '
         </div>
 
         {/* Input Bar */}
-        <form onSubmit={handleSend} className="p-4 border-t border-slate-800 bg-slate-950/40 flex gap-2">
+        <form onSubmit={handleSend} className="p-3 border-t border-zinc-900 bg-zinc-950 flex gap-2">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Pregunta sobre licitaciones, productos o precios..."
-            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
           />
           <button
             type="submit"
             disabled={loading || !query.trim()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center cursor-pointer"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center cursor-pointer"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
           </button>
         </form>
 
