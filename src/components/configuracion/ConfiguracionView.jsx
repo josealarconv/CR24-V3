@@ -9,6 +9,7 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
   const [direccion, setDireccion] = useState(config.direccion || ASSETS.COMPANY_ADDRESS);
   const [telefono, setTelefono] = useState(config.telefono || ASSETS.COMPANY_PHONE);
   const [email, setEmail] = useState(config.email || ASSETS.COMPANY_EMAIL);
+  const [logoUrl, setLogoUrl] = useState(config.logoUrl || ASSETS.COMPANY_LOGO_URL);
   const [condiciones, setCondiciones] = useState(config.condicionesCotizacionDefecto || ASSETS.condicionesCotizacionDefecto);
   const [saved, setSaved] = useState(false);
 
@@ -21,6 +22,7 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
       direccion,
       telefono,
       email,
+      logoUrl,
       condicionesCotizacionDefecto: condiciones
     });
     setSaved(true);
@@ -85,6 +87,16 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
               type="text"
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">URL del Logotipo de la Empresa (Membrete PDF)</label>
+            <Input
+              type="text"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://..."
             />
           </div>
 
