@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Save, Check } from 'lucide-react';
+import { Settings, Save, Check, Image as ImageIcon } from 'lucide-react';
 import { Button, Card, Input } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
@@ -12,6 +12,7 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || ASSETS.COMPANY_LOGO_URL);
   const [condiciones, setCondiciones] = useState(config.condicionesCotizacionDefecto || ASSETS.condicionesCotizacionDefecto);
   const [saved, setSaved] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -90,18 +91,47 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">URL del Logotipo de la Empresa (Membrete PDF)</label>
-            <Input
-              type="text"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://..."
-            />
+          {/* Logo URL & Live Visual Preview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            <div className="md:col-span-2 space-y-1">
+              <label className="block text-xs font-medium text-zinc-400 mb-1">URL del Logotipo de la Empresa (Membrete PDF)</label>
+              <Input
+                type="text"
+                value={logoUrl}
+                onChange={(e) => {
+                  setLogoUrl(e.target.value);
+                  setImageError(false);
+                }}
+                placeholder="https://..."
+              />
+              <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                Esta imagen se imprime automáticamente en la cabecera de las cotizaciones PDF oficiales.
+              </p>
+            </div>
+
+            {/* Live Preview Box */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Previsualización del Logotipo</label>
+              <div className="bg-white p-3 rounded-xl border border-zinc-800 min-h-[96px] max-h-28 flex items-center justify-center shadow-xs">
+                {logoUrl && !imageError ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logotipo de la empresa"
+                    onError={() => setImageError(true)}
+                    className="max-h-20 max-w-full object-contain"
+                  />
+                ) : (
+                  <div className="text-center text-zinc-400 space-y-1">
+                    <ImageIcon className="w-5 h-5 mx-auto text-zinc-400" />
+                    <span className="block text-[10px]">Sin imagen o URL no válida</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Predeterminadas para Cotizaciones PDF</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Predetermonadas para Cotizaciones PDF</label>
             <textarea
               rows={3}
               value={condiciones}
