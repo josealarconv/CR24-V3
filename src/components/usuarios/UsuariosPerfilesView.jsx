@@ -378,24 +378,41 @@ export default function UsuariosPerfilesView({
                     </p>
                   )}
 
-                  <div className="mt-3 pt-3 border-t border-zinc-800 space-y-1.5 text-[11px]">
-                    <span className="text-zinc-500 block font-mono font-semibold uppercase">Permisos resumidos:</span>
-                    {Object.entries(p.permisos || {}).slice(0, 5).map(([mod, perm]) => (
-                      <div key={mod} className="flex items-center justify-between text-zinc-300">
-                        <span className="capitalize">{mod}:</span>
-                        <span className="font-mono text-zinc-400">
-                          {perm?.ver ? 'Ver ' : ''}{perm?.agregar ? 'C ' : ''}{perm?.editar ? 'E ' : ''}{perm?.eliminar ? 'D ' : ''}
-                          ({perm?.alcance || 'todos'})
-                        </span>
-                      </div>
-                    ))}
+                  {/* Clarified Actions Summary in Full Natural Spanish */}
+                  <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2 text-xs">
+                    <span className="text-zinc-500 block font-mono text-[10px] font-semibold uppercase">Permisos del Perfil:</span>
+                    {Object.entries(p.permisos || {}).slice(0, 6).map(([mod, perm]) => {
+                      const actionsList = [];
+                      if (perm?.ver) actionsList.push('Ver');
+                      if (perm?.agregar) actionsList.push('Crear');
+                      if (perm?.editar) actionsList.push('Editar');
+                      if (perm?.eliminar) actionsList.push('Eliminar');
+
+                      const scopeText = perm?.alcance === 'propios' ? 'Solo creados por mí' : 'Toda la empresa';
+
+                      return (
+                        <div key={mod} className="flex flex-col sm:flex-row sm:items-center justify-between text-zinc-300 text-[11px] gap-0.5 border-b border-zinc-900/60 pb-1">
+                          <span className="capitalize font-medium text-zinc-200">{mod}:</span>
+                          <span className="font-mono text-zinc-400 text-[10px]">
+                            {actionsList.length > 0 ? actionsList.join(' • ') : 'Sin acceso'}
+                            <span className="text-zinc-500 ml-1">({scopeText})</span>
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-zinc-800 flex justify-end">
-                  <Button variant="secondary" size="xs" onClick={() => handleOpenEditProfile(p)}>
-                    <Edit2 className="w-3 h-3" />
-                    <span>Configurar Permisos</span>
+                {/* Robust Non-Overflowing Action Button */}
+                <div className="pt-3 border-t border-zinc-800 flex justify-end w-full">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full sm:w-auto justify-center px-3 py-1.5 text-xs shrink-0"
+                    onClick={() => handleOpenEditProfile(p)}
+                  >
+                    <Edit2 className="w-3.5 h-3.5 shrink-0" />
+                    <span className="whitespace-nowrap">Configurar Permisos</span>
                   </Button>
                 </div>
               </Card>
@@ -568,8 +585,8 @@ export default function UsuariosPerfilesView({
                         onChange={(e) => updateMatrixField(mod.id, 'alcance', e.target.value)}
                         className="bg-zinc-950 text-[11px] text-zinc-400 border border-zinc-800 rounded px-1.5 py-0.5 disabled:opacity-60"
                       >
-                        <option value="todos">Ver Todos</option>
-                        <option value="propios">Solo Propios</option>
+                        <option value="todos">Toda la Empresa</option>
+                        <option value="propios">Solo creados por mí</option>
                       </select>
                     </div>
 
@@ -592,7 +609,7 @@ export default function UsuariosPerfilesView({
                           onChange={(e) => updateMatrixField(mod.id, 'agregar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
-                        <span>Agregar</span>
+                        <span>Crear</span>
                       </label>
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
