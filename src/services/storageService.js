@@ -6,7 +6,11 @@ import {
   INITIAL_DETALLES,
   INITIAL_CONSULTAS,
   INITIAL_COTIZACIONES,
-  INITIAL_ANEXOS
+  INITIAL_ANEXOS,
+  INITIAL_PERFILES,
+  INITIAL_USUARIOS,
+  INITIAL_NOTAS_LICITACION,
+  INITIAL_INVESTIGACIONES_IA
 } from '../data/initialData';
 
 const KEYS = {
@@ -18,6 +22,10 @@ const KEYS = {
   CONSULTAS: 'cr24_consultas',
   COTIZACIONES: 'cr24_cotizaciones',
   ANEXOS: 'cr24_anexos',
+  PERFILES: 'cr24_perfiles',
+  USUARIOS: 'cr24_usuarios',
+  NOTAS_LICITACION: 'cr24_notas_licitacion',
+  INVESTIGACIONES_IA: 'cr24_investigaciones_ia',
   OFFLINE_QUEUE: 'cr24_offline_queue'
 };
 
@@ -47,6 +55,18 @@ export function initStorage() {
   if (!localStorage.getItem(KEYS.ANEXOS)) {
     localStorage.setItem(KEYS.ANEXOS, JSON.stringify(INITIAL_ANEXOS));
   }
+  if (!localStorage.getItem(KEYS.PERFILES)) {
+    localStorage.setItem(KEYS.PERFILES, JSON.stringify(INITIAL_PERFILES));
+  }
+  if (!localStorage.getItem(KEYS.USUARIOS)) {
+    localStorage.setItem(KEYS.USUARIOS, JSON.stringify(INITIAL_USUARIOS));
+  }
+  if (!localStorage.getItem(KEYS.NOTAS_LICITACION)) {
+    localStorage.setItem(KEYS.NOTAS_LICITACION, JSON.stringify(INITIAL_NOTAS_LICITACION));
+  }
+  if (!localStorage.getItem(KEYS.INVESTIGACIONES_IA)) {
+    localStorage.setItem(KEYS.INVESTIGACIONES_IA, JSON.stringify(INITIAL_INVESTIGACIONES_IA));
+  }
   if (!localStorage.getItem(KEYS.OFFLINE_QUEUE)) {
     localStorage.setItem(KEYS.OFFLINE_QUEUE, JSON.stringify([]));
   }
@@ -54,75 +74,63 @@ export function initStorage() {
 
 export function getData(key) {
   try {
-    const raw = localStorage.getItem(KEYS[key.toUpperCase()]);
+    const storageKey = KEYS[key.toUpperCase()];
+    if (!storageKey) return [];
+    const raw = localStorage.getItem(storageKey);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
-    console.error('Error reading localStorage:', e);
+    console.error('Error reading localStorage for key:', key, e);
     return [];
   }
 }
 
 export function saveData(key, data) {
   try {
-    localStorage.setItem(KEYS[key.toUpperCase()], JSON.stringify(data));
-    // Trigger storage event for UI reactive updates
+    const storageKey = KEYS[key.toUpperCase()];
+    if (!storageKey) {
+      console.error('Invalid storage key:', key);
+      return;
+    }
+    localStorage.setItem(storageKey, JSON.stringify(data));
     window.dispatchEvent(new Event('storage-update'));
+
+    if (!navigator.onLine) {
+      addToOfflineQueue({ action: 'SAVE', key, data, timestamp: new Date().toISOString() });
+    }
   } catch (e) {
-    console.error('Error writing to localStorage:', e);
+    console.error('Error saving to localStorage:', e);
   }
 }
 
 export function addItem(key, item) {
-  const list = getData(key);
-  const updated = [item, ...list];
+  const current = getData(key);
+  const updated = [item, ...current];
   saveData(key, updated);
-  
-  if (!navigator.onLine) {
-    enqueueOfflineChange({ action: 'CREATE', key, item, timestamp: new Date().toISOString() });
-  }
   return updated;
 }
 
-export function updateItem(key, id, fields) {
-  const list = getData(key);
-  const updated = list.map(item => item.id === id ? { ...item, ...fields, updatedAt: new Date().toISOString() } : item);
+export function updateItem(key, idField, idValue, newFields) {
+  const current = getData(key);
+  const updated = current.map(item =>
+    item[idField] === idValue ? { ...item, ...newFields } : item
+  );
   saveData(key, updated);
-
-  if (!navigator.onLine) {
-    enqueueOfflineChange({ action: 'UPDATE', key, id, fields, timestamp: new Date().toISOString() });
-  }
   return updated;
 }
 
-export function removeItem(key, id) {
-  const list = getData(key);
-  const updated = list.filter(item => item.id !== id);
+export function deleteItem(key, idField, idValue) {
+  const current = getData(key);
+  const updated = current.filter(item => item[idField] !== idValue);
   saveData(key, updated);
-
-  if (!navigator.onLine) {
-    enqueueOfflineChange({ action: 'DELETE', key, id, timestamp: new Date().toISOString() });
-  }
   return updated;
 }
 
-function enqueueOfflineChange(change) {
+function addToOfflineQueue(item) {
   try {
     const queue = JSON.parse(localStorage.getItem(KEYS.OFFLINE_QUEUE) || '[]');
-    queue.push(change);
+    queue.push(item);
     localStorage.setItem(KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
   } catch (e) {
-    console.error('Error enqueuing offline change:', e);
+    console.error('Error updating offline queue:', e);
   }
-}
-
-export function getOfflineQueue() {
-  try {
-    return JSON.parse(localStorage.getItem(KEYS.OFFLINE_QUEUE) || '[]');
-  } catch (e) {
-    return [];
-  }
-}
-
-export function clearOfflineQueue() {
-  localStorage.setItem(KEYS.OFFLINE_QUEUE, JSON.stringify([]));
 }

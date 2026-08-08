@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, ShieldAlert, Check, X, Key, Lock, Trash2, Plus, Edit2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, X, Plus, Edit2 } from 'lucide-react';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 
 export default function UsuariosPerfilesView({
@@ -17,7 +17,7 @@ export default function UsuariosPerfilesView({
   const [userNombre, setUserNombre] = useState('');
   const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-ADMIN');
 
-  // New Profile Form State
+  // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [profileNombre, setProfileNombre] = useState('');
@@ -35,7 +35,7 @@ export default function UsuariosPerfilesView({
     { id: 'configuracion', name: 'Configuración de Empresa' }
   ];
 
-  const defaultPermissions = () => {
+  const createDefaultPermissions = () => {
     const p = {};
     modulesList.forEach(m => {
       p[m.id] = { ver: true, agregar: true, editar: true, eliminar: false, alcance: 'todos' };
@@ -43,7 +43,7 @@ export default function UsuariosPerfilesView({
     return p;
   };
 
-  const [permissionsMatrix, setPermissionsMatrix] = useState(defaultPermissions());
+  const [permissionsMatrix, setPermissionsMatrix] = useState(createDefaultPermissions());
 
   const getPerfilNombre = (perfilId) => {
     const p = perfiles.find(item => item.id === perfilId);
@@ -57,7 +57,7 @@ export default function UsuariosPerfilesView({
     onSaveUsuario({
       email: userEmail.trim().toLowerCase(),
       nombre: userNombre.trim(),
-      perfilId: userPerfilId,
+      perfilId: userPerfilId || perfiles[0]?.id || 'PRF-ADMIN',
       activo: true,
       fechaRegistro: new Date().toISOString().split('T')[0]
     });
@@ -70,8 +70,18 @@ export default function UsuariosPerfilesView({
   const handleOpenEditProfile = (profile) => {
     setEditingProfile(profile);
     setProfileNombre(profile ? profile.nombre : '');
-    setProfileDesc(profile ? profile.descripcion : '');
-    setPermissionsMatrix(profile ? profile.permisos : defaultPermissions());
+    setProfileDesc(profile ? profile.descripcion || '' : '');
+    
+    // Ensure all modules are present in matrix
+    const base = createDefaultPermissions();
+    if (profile && profile.permisos) {
+      Object.keys(base).forEach(modId => {
+        if (profile.permisos[modId]) {
+          base[modId] = { ...base[modId], ...profile.permisos[modId] };
+        }
+      });
+    }
+    setPermissionsMatrix(base);
     setShowProfileModal(true);
   };
 
@@ -88,21 +98,26 @@ export default function UsuariosPerfilesView({
 
     setShowProfileModal(false);
     setEditingProfile(null);
+    setProfileNombre('');
+    setProfileDesc('');
   };
 
   const updateMatrixField = (moduleId, action, value) => {
-    setPermissionsMatrix(prev => ({
-      ...prev,
-      [moduleId]: {
-        ...prev[moduleId],
-        [action]: value
-      }
-    }));
+    setPermissionsMatrix(prev => {
+      const currentModuleObj = prev[moduleId] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
+      return {
+        ...prev,
+        [moduleId]: {
+          ...currentModuleObj,
+          [action]: value
+        }
+      };
+    });
   };
 
   return (
     <div className="space-y-4 w-full">
-      {/* Action Header Banner (100% Width) */}
+      {/* Action Header Banner (100% Screen Width) */}
       <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
@@ -130,7 +145,7 @@ export default function UsuariosPerfilesView({
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-zinc-800 space-x-4">
+      <div className="flex border-b border-zinc-800 space-x-4 w-full">
         <button
           onClick={() => setActiveTab('usuarios')}
           className={`pb-2 text-xs font-medium border-b-2 transition-all cursor-pointer ${
@@ -215,7 +230,7 @@ export default function UsuariosPerfilesView({
       {activeTab === 'perfiles' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {perfiles.map((p) => (
-            <Card key={p.id} className="space-y-3 flex flex-col justify-between">
+            <Card key={p.id} className="space-y-3 flex flex-col justify-between w-full">
               <div>
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-zinc-100 font-mono">{p.nombre}</h3>
@@ -229,8 +244,8 @@ export default function UsuariosPerfilesView({
                     <div key={mod} className="flex items-center justify-between text-zinc-300">
                       <span className="capitalize">{mod}:</span>
                       <span className="font-mono text-zinc-400">
-                        {perm.ver ? 'Ver ' : ''}{perm.agregar ? 'C ' : ''}{perm.editar ? 'E ' : ''}{perm.eliminar ? 'D ' : ''}
-                        ({perm.alcance})
+                        {perm?.ver ? 'Ver ' : ''}{perm?.agregar ? 'C ' : ''}{perm?.editar ? 'E ' : ''}{perm?.eliminar ? 'D ' : ''}
+                        ({perm?.alcance || 'todos'})
                       </span>
                     </div>
                   ))}
@@ -333,13 +348,13 @@ export default function UsuariosPerfilesView({
             <h4 className="text-xs font-bold text-zinc-300 uppercase font-mono mb-2">Matriz de Acciones por Módulo</h4>
             <div className="space-y-2.5 bg-zinc-950 p-3 rounded-lg border border-zinc-800">
               {modulesList.map(mod => {
-                const p = permissionsMatrix[mod.id] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'propios' };
+                const p = permissionsMatrix[mod.id] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
                 return (
                   <div key={mod.id} className="p-2 bg-zinc-900/60 rounded border border-zinc-800 text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-zinc-200">{mod.name}</span>
                       <select
-                        value={p.alcance}
+                        value={p.alcance || 'todos'}
                         onChange={(e) => updateMatrixField(mod.id, 'alcance', e.target.value)}
                         className="bg-zinc-950 text-[11px] text-zinc-400 border border-zinc-800 rounded px-1.5 py-0.5"
                       >
@@ -352,7 +367,7 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={p.ver}
+                          checked={!!p.ver}
                           onChange={(e) => updateMatrixField(mod.id, 'ver', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
@@ -361,7 +376,7 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={p.agregar}
+                          checked={!!p.agregar}
                           onChange={(e) => updateMatrixField(mod.id, 'agregar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
@@ -370,7 +385,7 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={p.editar}
+                          checked={!!p.editar}
                           onChange={(e) => updateMatrixField(mod.id, 'editar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
@@ -379,7 +394,7 @@ export default function UsuariosPerfilesView({
                       <label className="flex items-center space-x-1 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={p.eliminar}
+                          checked={!!p.eliminar}
                           onChange={(e) => updateMatrixField(mod.id, 'eliminar', e.target.checked)}
                           className="rounded border-zinc-800 text-blue-600 focus:ring-0"
                         />
