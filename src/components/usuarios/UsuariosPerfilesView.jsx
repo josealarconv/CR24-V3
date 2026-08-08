@@ -16,12 +16,15 @@ export default function UsuariosPerfilesView({
 
   const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'perfiles'
 
+  // Assignable profiles for new/edited users (excludes SuperAdmin Master)
+  const assignableProfiles = perfiles.filter(p => p.id !== 'PRF-SUPERADMIN');
+
   // New / Edit User Form State
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [userEmail, setUserEmail] = useState('');
   const [userNombre, setUserNombre] = useState('');
-  const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-SUPERADMIN');
+  const [userPerfilId, setUserPerfilId] = useState(assignableProfiles[0]?.id || 'PRF-ADMIN');
 
   // Delete User State
   const [deletingUserEmail, setDeletingUserEmail] = useState(null);
@@ -63,7 +66,7 @@ export default function UsuariosPerfilesView({
     setEditingUser(null);
     setUserEmail('');
     setUserNombre('');
-    setUserPerfilId(perfiles.find(p => p.id === 'PRF-ADMIN')?.id || perfiles[0]?.id || 'PRF-ADMIN');
+    setUserPerfilId(assignableProfiles[0]?.id || 'PRF-ADMIN');
     setShowUserModal(true);
   };
 
@@ -71,7 +74,7 @@ export default function UsuariosPerfilesView({
     setEditingUser(user);
     setUserEmail(user.email);
     setUserNombre(user.nombre);
-    setUserPerfilId(user.perfilId);
+    setUserPerfilId(user.perfilId === 'PRF-SUPERADMIN' ? assignableProfiles[0]?.id || 'PRF-ADMIN' : user.perfilId);
     setShowUserModal(true);
   };
 
@@ -79,10 +82,18 @@ export default function UsuariosPerfilesView({
     e.preventDefault();
     if (!userEmail.trim() || !userNombre.trim()) return;
 
+    const cleanEmail = userEmail.trim().toLowerCase();
+    let finalPerfilId = userPerfilId;
+
+    // Guard: Prevent assigning PRF-SUPERADMIN to anyone except josealarconv@gmail.com
+    if (cleanEmail !== 'josealarconv@gmail.com' && finalPerfilId === 'PRF-SUPERADMIN') {
+      finalPerfilId = 'PRF-ADMIN';
+    }
+
     onSaveUsuario({
-      email: userEmail.trim().toLowerCase(),
+      email: cleanEmail,
       nombre: userNombre.trim(),
-      perfilId: userPerfilId || perfiles[0]?.id || 'PRF-ADMIN',
+      perfilId: finalPerfilId,
       activo: editingUser ? editingUser.activo : true,
       fechaRegistro: editingUser ? editingUser.fechaRegistro : new Date().toISOString().split('T')[0]
     });
@@ -442,10 +453,13 @@ export default function UsuariosPerfilesView({
               onChange={(e) => setUserPerfilId(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
             >
-              {perfiles.map(p => (
+              {assignableProfiles.map(p => (
                 <option key={p.id} value={p.id}>{p.nombre}</option>
               ))}
             </select>
+            <p className="text-[10px] text-zinc-500 font-mono mt-1">
+              Nota: El perfil SuperAdmin Master es exclusivo del creador del sistema y no se puede seleccionar.
+            </p>
           </div>
 
           <div className="flex justify-end space-x-2 pt-2">
