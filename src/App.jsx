@@ -182,6 +182,14 @@ export default function App() {
     setPerfiles(updated);
   };
 
+  const handleDeletePerfil = (perfilId) => {
+    if (['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(perfilId)) return;
+    if (usuarios.some(u => u.perfilId === perfilId)) return;
+    const updated = perfiles.filter(p => p.id !== perfilId);
+    saveData('PERFILES', updated);
+    setPerfiles(updated);
+  };
+
   const handleAddCliente = (newCli) => {
     const updated = addItem('CLIENTES', newCli);
     setClientes(updated);
@@ -301,6 +309,7 @@ export default function App() {
             perfiles={perfiles}
             onSaveUsuario={handleSaveUsuario}
             onSavePerfil={handleSavePerfil}
+            onDeletePerfil={handleDeletePerfil}
             onToggleUsuarioActivo={handleToggleUsuarioActivo}
             onDeleteUsuario={handleDeleteUsuario}
           />

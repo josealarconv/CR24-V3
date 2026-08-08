@@ -8,6 +8,7 @@ export default function UsuariosPerfilesView({
   perfiles = [],
   onSaveUsuario,
   onSavePerfil,
+  onDeletePerfil,
   onToggleUsuarioActivo,
   onDeleteUsuario
 }) {
@@ -35,6 +36,10 @@ export default function UsuariosPerfilesView({
   const [editingProfile, setEditingProfile] = useState(null);
   const [profileNombre, setProfileNombre] = useState('');
   const [profileDesc, setProfileDesc] = useState('');
+
+  // Delete Profile Modal State
+  const [deletingPerfilObj, setDeletingPerfilObj] = useState(null);
+  const [deletingPerfilErrorMsg, setDeletingPerfilErrorMsg] = useState(null);
 
   const modulesList = [
     { id: 'licitaciones', name: 'Licitaciones' },
@@ -125,6 +130,24 @@ export default function UsuariosPerfilesView({
       onDeleteUsuario(deletingUserEmail);
     }
     setDeletingUserEmail(null);
+  };
+
+  const handleOpenDeletePerfil = (profile) => {
+    setDeletingPerfilObj(profile);
+    const assignedCount = usuarios.filter(u => u.perfilId === profile.id).length;
+    if (assignedCount > 0) {
+      setDeletingPerfilErrorMsg(`No se puede eliminar el perfil "${profile.nombre}" porque actualmente hay ${assignedCount} usuario(s) asignado(s) a él. Por favor reasigna sus perfiles antes de eliminarlo.`);
+    } else {
+      setDeletingPerfilErrorMsg(null);
+    }
+  };
+
+  const confirmDeletePerfil = () => {
+    if (deletingPerfilObj && onDeletePerfil && !deletingPerfilErrorMsg) {
+      onDeletePerfil(deletingPerfilObj.id);
+    }
+    setDeletingPerfilObj(null);
+    setDeletingPerfilErrorMsg(null);
   };
 
   const handleOpenEditProfile = (profile) => {
@@ -360,6 +383,8 @@ export default function UsuariosPerfilesView({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {perfiles.map((p) => {
             const isProtected = ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(p.id) || p.esProtegido;
+            const assignedUsersCount = usuarios.filter(u => u.perfilId === p.id).length;
+
             return (
               <Card key={p.id} className="space-y-3 flex flex-col justify-between w-full">
                 <div>
@@ -372,9 +397,14 @@ export default function UsuariosPerfilesView({
                   </div>
                   <p className="text-xs text-zinc-400 mt-1">{p.descripcion}</p>
 
-                  {isProtected && (
+                  {isProtected ? (
                     <p className="text-[10px] text-amber-400/90 font-mono mt-1.5 bg-amber-950/30 p-1.5 rounded border border-amber-800/40">
-                      Perfil protegido del sistema. Los permisos de administración permanecen activos por seguridad.
+                      Perfil protegido del sistema. No se puede eliminar por seguridad.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-zinc-400 font-mono mt-1.5 bg-zinc-900/60 p-1.5 rounded border border-zinc-800/60 flex items-center justify-between">
+                      <span>Usuarios asignados:</span>
+                      <span className="font-bold text-zinc-200">{assignedUsersCount} usuario(s)</span>
                     </p>
                   )}
 
@@ -403,12 +433,25 @@ export default function UsuariosPerfilesView({
                   </div>
                 </div>
 
-                {/* Robust Non-Overflowing Action Button */}
-                <div className="pt-3 border-t border-zinc-800 flex justify-end w-full">
+                {/* Card Action Buttons (Edit Profile + Delete Profile if unassigned) */}
+                <div className="pt-3 border-t border-zinc-800 flex items-center justify-between gap-2 w-full">
+                  {!isProtected ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDeletePerfil(p)}
+                      className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                      title="Eliminar Perfil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <div></div>
+                  )}
+
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="w-full sm:w-auto justify-center px-3 py-1.5 text-xs shrink-0"
+                    className="px-3 py-1.5 text-xs shrink-0"
                     onClick={() => handleOpenEditProfile(p)}
                   >
                     <Edit2 className="w-3.5 h-3.5 shrink-0" />
@@ -443,6 +486,52 @@ export default function UsuariosPerfilesView({
               Eliminar Definitivamente
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Modal Confirmar o Bloquear Eliminación de Perfil */}
+      <Modal
+        isOpen={!!deletingPerfilObj}
+        onClose={() => {
+          setDeletingPerfilObj(null);
+          setDeletingPerfilErrorMsg(null);
+        }}
+        title={`Eliminar Perfil: ${deletingPerfilObj?.nombre || ''}`}
+      >
+        <div className="space-y-3 font-sans">
+          {deletingPerfilErrorMsg ? (
+            <>
+              <div className="p-3 bg-red-950/60 border border-red-800/80 text-red-300 text-xs rounded-xl flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <span>{deletingPerfilErrorMsg}</span>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button variant="ghost" size="sm" onClick={() => {
+                  setDeletingPerfilObj(null);
+                  setDeletingPerfilErrorMsg(null);
+                }}>
+                  Entendido
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-zinc-300">
+                ¿Estás seguro de que deseas eliminar el perfil <span className="font-bold text-zinc-100 font-mono">{deletingPerfilObj?.nombre}</span> ({deletingPerfilObj?.id})?
+              </p>
+              <p className="text-xs text-amber-400 bg-amber-950/30 p-2 rounded border border-amber-900/50">
+                Este perfil no tiene usuarios asignados actualmente. Esta acción eliminará el perfil del catálogo.
+              </p>
+              <div className="flex justify-end space-x-2 pt-2">
+                <Button variant="ghost" size="sm" onClick={() => setDeletingPerfilObj(null)}>
+                  Cancelar
+                </Button>
+                <Button variant="danger" size="sm" onClick={confirmDeletePerfil}>
+                  Eliminar Perfil
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
