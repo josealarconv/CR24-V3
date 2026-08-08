@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2, AlertCircle } from 'lucide-react';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 import { getActiveUser } from '../../services/authService';
 
@@ -25,6 +25,7 @@ export default function UsuariosPerfilesView({
   const [userEmail, setUserEmail] = useState('');
   const [userNombre, setUserNombre] = useState('');
   const [userPerfilId, setUserPerfilId] = useState(assignableProfiles[0]?.id || 'PRF-ADMIN');
+  const [userValidationError, setUserValidationError] = useState(null);
 
   // Delete User State
   const [deletingUserEmail, setDeletingUserEmail] = useState(null);
@@ -67,6 +68,7 @@ export default function UsuariosPerfilesView({
     setUserEmail('');
     setUserNombre('');
     setUserPerfilId(assignableProfiles[0]?.id || 'PRF-ADMIN');
+    setUserValidationError(null);
     setShowUserModal(true);
   };
 
@@ -75,24 +77,37 @@ export default function UsuariosPerfilesView({
     setUserEmail(user.email);
     setUserNombre(user.nombre);
     setUserPerfilId(user.perfilId === 'PRF-SUPERADMIN' ? assignableProfiles[0]?.id || 'PRF-ADMIN' : user.perfilId);
+    setUserValidationError(null);
     setShowUserModal(true);
   };
 
   const handleUserFormSubmit = (e) => {
     e.preventDefault();
-    if (!userEmail.trim() || !userNombre.trim()) return;
+    setUserValidationError(null);
 
     const cleanEmail = userEmail.trim().toLowerCase();
+    const cleanNombre = userNombre.trim();
+
+    if (!cleanEmail || !cleanNombre || !userPerfilId) {
+      setUserValidationError('Campos obligatorios pendientes: Todos los campos marcados con (*) son requeridos.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setUserValidationError('El correo electrónico no tiene un formato válido (ejemplo: usuario@suministrosorion.cl).');
+      return;
+    }
+
     let finalPerfilId = userPerfilId;
 
-    // Guard: Prevent assigning PRF-SUPERADMIN to anyone except josealarconv@gmail.com
     if (cleanEmail !== 'josealarconv@gmail.com' && finalPerfilId === 'PRF-SUPERADMIN') {
       finalPerfilId = 'PRF-ADMIN';
     }
 
     onSaveUsuario({
       email: cleanEmail,
-      nombre: userNombre.trim(),
+      nombre: cleanNombre,
       perfilId: finalPerfilId,
       activo: editingUser ? editingUser.activo : true,
       fechaRegistro: editingUser ? editingUser.fechaRegistro : new Date().toISOString().split('T')[0]
@@ -102,6 +117,7 @@ export default function UsuariosPerfilesView({
     setEditingUser(null);
     setUserEmail('');
     setUserNombre('');
+    setUserValidationError(null);
   };
 
   const confirmDeleteUser = () => {
@@ -250,7 +266,7 @@ export default function UsuariosPerfilesView({
 
                 return (
                   <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
-                    {/* Clean Email Column (No redundant badges) */}
+                    {/* Clean Email Column */}
                     <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
                       {u.email}
                     </td>
@@ -259,7 +275,7 @@ export default function UsuariosPerfilesView({
                       {u.nombre}
                     </td>
 
-                    {/* Perfil Asignado Column: Official Badge for SuperAdmin Master, Admin, or Operational */}
+                    {/* Perfil Asignado Column */}
                     <td className="px-4 py-3 font-sans">
                       {u.perfilId === 'PRF-SUPERADMIN' || isRowMaster ? (
                         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/60 border border-amber-800/80 text-amber-300">
@@ -276,7 +292,7 @@ export default function UsuariosPerfilesView({
                       {u.fechaRegistro || '2025-01-01'}
                     </td>
                     
-                    {/* Estado Acceso Column: Interactive Toggle Switch Pill */}
+                    {/* Estado Acceso Column */}
                     <td className="px-4 py-3 font-sans">
                       <button
                         type="button"
@@ -303,7 +319,7 @@ export default function UsuariosPerfilesView({
                       </button>
                     </td>
 
-                    {/* Acciones Column: Editar (Pencil) & Borrar (Trash) */}
+                    {/* Acciones Column */}
                     <td className="px-4 py-3 text-right font-sans">
                       <div className="flex items-center justify-end space-x-1.5">
                         {canModifyRow ? (
@@ -413,22 +429,35 @@ export default function UsuariosPerfilesView({
         </div>
       </Modal>
 
-      {/* Modal Crear / Editar Usuario */}
+      {/* Modal Crear / Editar Usuario con Validación Estricta */}
       <Modal
         isOpen={showUserModal}
         onClose={() => {
           setShowUserModal(false);
           setEditingUser(null);
+          setUserValidationError(null);
         }}
         title={editingUser ? `Editar Usuario: ${editingUser.email}` : 'Autorizar Usuario en Lista Blanca'}
       >
         <form onSubmit={handleUserFormSubmit} className="space-y-3">
+          {userValidationError && (
+            <div className="p-3 bg-red-950/60 border border-red-800/80 text-red-300 text-xs rounded-xl flex items-start space-x-2 font-sans">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <span>{userValidationError}</span>
+            </div>
+          )}
+
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Correo Electrónico (No modificable)</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Correo Electrónico <span className="text-red-400 font-bold">*</span>
+            </label>
             <Input
               type="email"
               value={userEmail}
-              onChange={(e) => setUserEmail(e.target.value)}
+              onChange={(e) => {
+                setUserEmail(e.target.value);
+                setUserValidationError(null);
+              }}
               placeholder="ejemplo@suministrosorion.cl"
               required
               disabled={!!editingUser}
@@ -436,36 +465,45 @@ export default function UsuariosPerfilesView({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre Completo</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Nombre Completo <span className="text-red-400 font-bold">*</span>
+            </label>
             <Input
               type="text"
               value={userNombre}
-              onChange={(e) => setUserNombre(e.target.value)}
+              onChange={(e) => {
+                setUserNombre(e.target.value);
+                setUserValidationError(null);
+              }}
               placeholder="Ej: Juan Pérez"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Perfil de Acceso Asignado</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Perfil de Acceso Asignado <span className="text-red-400 font-bold">*</span>
+            </label>
             <select
               value={userPerfilId}
-              onChange={(e) => setUserPerfilId(e.target.value)}
+              onChange={(e) => {
+                setUserPerfilId(e.target.value);
+                setUserValidationError(null);
+              }}
               className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+              required
             >
               {assignableProfiles.map(p => (
                 <option key={p.id} value={p.id}>{p.nombre}</option>
               ))}
             </select>
-            <p className="text-[10px] text-zinc-500 font-mono mt-1">
-              Nota: El perfil SuperAdmin Master es exclusivo del creador del sistema y no se puede seleccionar.
-            </p>
           </div>
 
           <div className="flex justify-end space-x-2 pt-2">
             <Button variant="ghost" size="sm" type="button" onClick={() => {
               setShowUserModal(false);
               setEditingUser(null);
+              setUserValidationError(null);
             }}>
               Cancelar
             </Button>
