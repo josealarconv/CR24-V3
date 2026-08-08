@@ -455,7 +455,7 @@ export default function UsuariosPerfilesView({
                     onClick={() => handleOpenEditProfile(p)}
                   >
                     <Edit2 className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Configurar Permisos</span>
+                    <span className="whitespace-nowrap">Editar</span>
                   </Button>
                 </div>
               </Card>
