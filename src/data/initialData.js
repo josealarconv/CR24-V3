@@ -88,21 +88,21 @@ export const INITIAL_USUARIOS = [
     nombre: 'José Alarcón',
     perfilId: 'PRF-SUPERADMIN',
     activo: true,
-    fechaRegistro: '2025-01-01'
+    fechaRegistro: '2026-06-01'
   },
   {
     email: 'gerencia@suministrosorion.cl',
     nombre: 'Juan Arredondo',
     perfilId: 'PRF-ADMIN',
     activo: true,
-    fechaRegistro: '2025-01-01'
+    fechaRegistro: '2026-06-01'
   },
   {
     email: 'compras@suministrosorion.cl',
     nombre: 'Analista de Adquisiciones',
     perfilId: 'PRF-ANALISTA',
     activo: true,
-    fechaRegistro: '2025-01-05'
+    fechaRegistro: '2026-06-05'
   }
 ];
 
@@ -178,39 +178,240 @@ export const INITIAL_PROVEEDORES = [
   }
 ];
 
+// Clean 3-Month Seed History (Junio 2026, Julio 2026, Agosto 2026)
 export const INITIAL_LICITACIONES = [
+  // --- AGOSTO 2026 (6 Licitaciones) ---
   {
-    id: 'LIC-CODELCO-990',
-    numeroLicitacion: 'LIC-2025-CDK-0990',
-    fecha: '2025-01-08',
-    fechaCotizacion: '2025-01-14',
+    id: 'LIC-2026-CDK-0801',
+    numeroLicitacion: 'LIC-2026-CDK-0801',
+    fecha: '2026-08-02',
+    fechaCotizacion: '2026-08-10',
     clienteId: 'CLI-CODELCO',
     moneda: 'CLP',
     estatus: 'Consultando proveedores',
-    notas: 'Licitación urgente para suministro de instrumentos de calibración en Sewell.',
-    notasCotizacion: 'Precios cotizados en CLP. Despacho incluido en Bodega Central Mina El Teniente.',
+    notas: 'Instrumentación de calibración de campo para Planta Chancado Secundario en Sewell.',
+    notasCotizacion: 'Precios cotizados en CLP. Entrega en Bodega Central El Teniente.',
     contador: 2,
+    createdBy: 'josealarconv@gmail.com'
+  },
+  {
+    id: 'LIC-2026-PEL-0805',
+    numeroLicitacion: 'LIC-2026-PEL-0805',
+    fecha: '2026-08-05',
+    fechaCotizacion: '2026-08-12',
+    clienteId: 'CLI-PELAMBRES',
+    moneda: 'CLP',
+    estatus: 'Abierto',
+    notas: 'Kits de sellos y repuestos para bombas centrífugas de alta presión.',
+    notasCotizacion: 'Crédito 30 días. Despacho Faena Salamanca.',
+    contador: 1,
     createdBy: 'gerencia@suministrosorion.cl'
   },
   {
-    id: 'LIC-SKY-943',
-    numeroLicitacion: 'ID-943 (Sky Airline)',
-    fecha: '2025-01-06',
-    fechaCotizacion: '2025-01-10',
+    id: 'LIC-2026-SKY-0808',
+    numeroLicitacion: 'LIC-2026-SKY-0808',
+    fecha: '2026-08-08',
+    fechaCotizacion: '2026-08-15',
     clienteId: 'CLI-SKY',
     moneda: 'USD',
     estatus: 'Cotizado al cliente',
-    notas: 'Repuestos de prueba para Hangar 2 Pudahuel.',
-    notasCotizacion: 'Validez de oferta 7 días en USD.',
+    notas: 'Insumos de prueba electromecánica para Hangar 2 Aeropuerto Pudahuel.',
+    notasCotizacion: 'Validez de oferta 15 días en USD.',
     contador: 1,
     createdBy: 'compras@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-CDK-0812',
+    numeroLicitacion: 'LIC-2026-CDK-0812',
+    fecha: '2026-08-12',
+    fechaCotizacion: '2026-08-18',
+    clienteId: 'CLI-CODELCO',
+    moneda: 'CLP',
+    estatus: 'Abierto',
+    notas: 'Sensores de temperatura PT100 y transmisores inteligentes de 4-20mA.',
+    notasCotizacion: 'Incluye certificado de calibración ISO 17025.',
+    contador: 1,
+    createdBy: 'gerencia@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-PEL-0815',
+    numeroLicitacion: 'LIC-2026-PEL-0815',
+    fecha: '2026-08-15',
+    fechaCotizacion: '2026-08-22',
+    clienteId: 'CLI-PELAMBRES',
+    moneda: 'CLP',
+    estatus: 'Aprobado',
+    notas: 'Juegos de herramientas aisladas 1000V con certificación VDE.',
+    notasCotizacion: 'Entrega prioritaria 48 horas.',
+    contador: 1,
+    createdBy: 'josealarconv@gmail.com'
+  },
+  {
+    id: 'LIC-2026-SKY-0820',
+    numeroLicitacion: 'LIC-2026-SKY-0820',
+    fecha: '2026-08-20',
+    fechaCotizacion: '2026-08-27',
+    clienteId: 'CLI-SKY',
+    moneda: 'USD',
+    estatus: 'Consultando proveedores',
+    notas: 'Multímetros digitales resistentes a impactos para mantención en línea.',
+    notasCotizacion: 'Precios en USD CIF Santiago.',
+    contador: 1,
+    createdBy: 'compras@suministrosorion.cl'
+  },
+
+  // --- JULIO 2026 (6 Licitaciones) ---
+  {
+    id: 'LIC-2026-CDK-0703',
+    numeroLicitacion: 'LIC-2026-CDK-0703',
+    fecha: '2026-07-03',
+    fechaCotizacion: '2026-07-10',
+    clienteId: 'CLI-CODELCO',
+    moneda: 'CLP',
+    estatus: 'Cobrado',
+    notas: 'Válvulas de mariposa tipo wafer 6 pulgadas cuerpo de acero inoxidable.',
+    notasCotizacion: 'Entregado y facturado satisfactoriamente.',
+    contador: 1,
+    createdBy: 'gerencia@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-PEL-0709',
+    numeroLicitacion: 'LIC-2026-PEL-0709',
+    fecha: '2026-07-09',
+    fechaCotizacion: '2026-07-16',
+    clienteId: 'CLI-PELAMBRES',
+    moneda: 'CLP',
+    estatus: 'Aprobado',
+    notas: 'Manómetros llenos de glicerina dial 4 pulgadas 0-100 BAR conexión 1/2 NPT.',
+    notasCotizacion: 'Despachado a faena Los Pelambres.',
+    contador: 1,
+    createdBy: 'compras@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-SKY-0715',
+    numeroLicitacion: 'LIC-2026-SKY-0715',
+    fecha: '2026-07-15',
+    fechaCotizacion: '2026-07-22',
+    clienteId: 'CLI-SKY',
+    moneda: 'USD',
+    estatus: 'Cotizado al cliente',
+    notas: 'Analizadores de baterías aeronáuticas de alta capacidad.',
+    notasCotizacion: 'Oferta enviada a departamento de compras.',
+    contador: 1,
+    createdBy: 'josealarconv@gmail.com'
+  },
+  {
+    id: 'LIC-2026-CDK-0720',
+    numeroLicitacion: 'LIC-2026-CDK-0720',
+    fecha: '2026-07-20',
+    fechaCotizacion: '2026-07-27',
+    clienteId: 'CLI-CODELCO',
+    moneda: 'CLP',
+    estatus: 'Despacho enviado',
+    notas: 'Actuadores neumáticos doble efecto y cajas finales de carrera.',
+    notasCotizacion: 'Despachado con guía de remisión.',
+    contador: 1,
+    createdBy: 'gerencia@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-PEL-0725',
+    numeroLicitacion: 'LIC-2026-PEL-0725',
+    fecha: '2026-07-25',
+    fechaCotizacion: '2026-07-30',
+    clienteId: 'CLI-PELAMBRES',
+    moneda: 'CLP',
+    estatus: 'Cerrado',
+    notas: 'Conjunto puestas a tierra portátiles media tensión.',
+    notasCotizacion: 'Concluida sin observaciones.',
+    contador: 1,
+    createdBy: 'compras@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-SKY-0728',
+    numeroLicitacion: 'LIC-2026-SKY-0728',
+    fecha: '2026-07-28',
+    fechaCotizacion: '2026-08-03',
+    clienteId: 'CLI-SKY',
+    moneda: 'USD',
+    estatus: 'Cotizado al cliente',
+    notas: 'Kits de conectores herméticos de aviación.',
+    notasCotizacion: 'Precios cotizados en USD.',
+    contador: 1,
+    createdBy: 'josealarconv@gmail.com'
+  },
+
+  // --- JUNIO 2026 (5 Licitaciones) ---
+  {
+    id: 'LIC-2026-CDK-0604',
+    numeroLicitacion: 'LIC-2026-CDK-0604',
+    fecha: '2026-06-04',
+    fechaCotizacion: '2026-06-11',
+    clienteId: 'CLI-CODELCO',
+    moneda: 'CLP',
+    estatus: 'Pagado',
+    notas: 'Variadores de frecuencia industrial Schneider 75kW 380V.',
+    notasCotizacion: 'Pago recibido por transferencia bancaria.',
+    contador: 1,
+    createdBy: 'gerencia@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-PEL-0610',
+    numeroLicitacion: 'LIC-2026-PEL-0610',
+    fecha: '2026-06-10',
+    fechaCotizacion: '2026-06-17',
+    clienteId: 'CLI-PELAMBRES',
+    moneda: 'CLP',
+    estatus: 'Cobrado',
+    notas: 'Proyectores LED antiexplosivos 200W para zona minera clasificada.',
+    notasCotizacion: 'Factura pagada en plazo de 30 días.',
+    contador: 1,
+    createdBy: 'josealarconv@gmail.com'
+  },
+  {
+    id: 'LIC-2026-SKY-0618',
+    numeroLicitacion: 'LIC-2026-SKY-0618',
+    fecha: '2026-06-18',
+    fechaCotizacion: '2026-06-25',
+    clienteId: 'CLI-SKY',
+    moneda: 'USD',
+    estatus: 'Aprobado',
+    notas: 'Equipos computacionales de uso rudo Toughbook para diagnóstico de rampa.',
+    notasCotizacion: 'Equipos entregados en base mantenimiento.',
+    contador: 1,
+    createdBy: 'compras@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-CDK-0622',
+    numeroLicitacion: 'LIC-2026-CDK-0622',
+    fecha: '2026-06-22',
+    fechaCotizacion: '2026-06-29',
+    clienteId: 'CLI-CODELCO',
+    moneda: 'CLP',
+    estatus: 'Cerrado',
+    notas: 'Empaquetaduras espirometélicas Flexitallic ASME 150#.',
+    notasCotizacion: 'Proceso cerrado.',
+    contador: 1,
+    createdBy: 'gerencia@suministrosorion.cl'
+  },
+  {
+    id: 'LIC-2026-PEL-0627',
+    numeroLicitacion: 'LIC-2026-PEL-0627',
+    fecha: '2026-06-27',
+    fechaCotizacion: '2026-07-04',
+    clienteId: 'CLI-PELAMBRES',
+    moneda: 'CLP',
+    estatus: 'Pagado',
+    notas: 'Acoplamientos flexibles y cadenas de transmisión doble 80-2.',
+    notasCotizacion: 'Operación finalizada.',
+    contador: 1,
+    createdBy: 'josealarconv@gmail.com'
   }
 ];
 
 export const INITIAL_DETALLES = [
   {
     id: 'DET-001',
-    licitacionId: 'LIC-CODELCO-990',
+    licitacionId: 'LIC-2026-CDK-0801',
     descripcion: 'Multímetro Digital Industrial Fluke 87V TRMS',
     cantidadRequerida: 10,
     cantidadACotizar: 10,
@@ -218,7 +419,7 @@ export const INITIAL_DETALLES = [
   },
   {
     id: 'DET-002',
-    licitacionId: 'LIC-CODELCO-990',
+    licitacionId: 'LIC-2026-CDK-0801',
     descripcion: 'Calibrador de Procesos Multifunción Fluke 754',
     cantidadRequerida: 2,
     cantidadACotizar: 2,
@@ -238,7 +439,7 @@ export const INITIAL_CONSULTAS = [
     costoAfex: 5000,
     costoUnitarioCompuesto: 400000,
     subtotalCosto: 1200000,
-    fecha: '2025-01-09',
+    fecha: '2026-08-03',
     estado: 'Aceptada'
   },
   {
@@ -252,7 +453,7 @@ export const INITIAL_CONSULTAS = [
     costoAfex: 5000,
     costoUnitarioCompuesto: 405000,
     subtotalCosto: 2835000,
-    fecha: '2025-01-09',
+    fecha: '2026-08-03',
     estado: 'Aceptada'
   }
 ];
@@ -260,15 +461,15 @@ export const INITIAL_CONSULTAS = [
 export const INITIAL_NOTAS_LICITACION = [
   {
     id: 'NTA-001',
-    licitacionId: 'LIC-CODELCO-990',
-    fechaHora: '2025-01-08 10:30',
+    licitacionId: 'LIC-2026-CDK-0801',
+    fechaHora: '2026-08-02 10:30',
     usuario: 'Juan Arredondo',
     texto: 'Se revisó el portal de Codelco. Requerimiento prioritario.'
   },
   {
     id: 'NTA-002',
-    licitacionId: 'LIC-CODELCO-990',
-    fechaHora: '2025-01-09 15:45',
+    licitacionId: 'LIC-2026-CDK-0801',
+    fechaHora: '2026-08-03 15:45',
     usuario: 'José Alarcón',
     texto: 'Electrónica 2000 ofreció 3 unidades y USA Computers las 7 restantes para completar las 10 unidades requeridas.'
   }
@@ -278,7 +479,7 @@ export const INITIAL_INVESTIGACIONES_IA = [
   {
     id: 'INV-001',
     detalleId: 'DET-001',
-    fechaHora: '2025-01-08 11:00',
+    fechaHora: '2026-08-02 11:00',
     usuario: 'Juan Arredondo',
     resultadoJSON: {
       resumenProducto: 'El Fluke 87V es un multímetro digital industrial TRMS diseñado para sistemas de alta resolución y precisión en entornos mineros exigentes.',
@@ -292,29 +493,30 @@ export const INITIAL_INVESTIGACIONES_IA = [
 
 export const INITIAL_COTIZACIONES = [
   {
-    id: 'COT-CDK-0990-V1',
-    licitacionId: 'LIC-CODELCO-990',
-    clienteId: 'CLI-CODELCO',
-    numeroCotizacion: 'COT-2025-001',
+    id: 'COT-2026-0808-V1',
+    licitacionId: 'LIC-2026-SKY-0808',
+    clienteId: 'CLI-SKY',
+    numeroCotizacion: 'COT-2026-001',
     version: 1,
-    fechaHora: '2025-01-10 16:00',
+    fecha: '2026-08-08',
+    fechaHora: '2026-08-08 16:00',
     usuario: 'Juan Arredondo',
     moneda: 'CLP',
-    subtotalNeto: 4800000,
-    iva: 912000,
-    total: 5712000,
+    subtotalNeto: 2150000,
+    iva: 408500,
+    total: 2558500,
     pdfUrl: '#',
-    notasCotizacion: 'Precios cotizados en CLP. Despacho incluido en Bodega Central Mina El Teniente.'
+    notasCotizacion: 'Precios cotizados en CLP. Despacho incluido Hangar 2 Pudahuel.'
   }
 ];
 
 export const INITIAL_ANEXOS = [
   {
     id: 'ANX-001',
-    licitacionId: 'LIC-CODELCO-990',
+    licitacionId: 'LIC-2026-CDK-0801',
     nombre: 'Bases_Tecnicas_Codelco_ElTeniente.pdf',
     url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     tipo: 'application/pdf',
-    fecha: '2025-01-08'
+    fecha: '2026-08-02'
   }
 ];

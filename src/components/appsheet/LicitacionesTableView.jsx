@@ -1,24 +1,49 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Filter, Building2, ChevronRight, Calendar, DollarSign } from 'lucide-react';
+import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button, Badge, Card, EmptyState, Modal, Input } from '../ui/Components';
 
 export default function LicitacionesTableView({
   licitaciones = [],
   clientes = [],
   detalles = [],
-  selectedMonth,
+  selectedMonth = '2026-08',
+  setSelectedMonth,
   onSelectLicitacion,
   onAddLicitacion
 }) {
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showNewModal, setShowNewModal] = useState(false);
 
+  // Month Stepper List
+  const monthsList = [
+    { value: '2026-08', label: 'Agosto 2026 (Mes Actual)' },
+    { value: '2026-07', label: 'Julio 2026' },
+    { value: '2026-06', label: 'Junio 2026' },
+    { value: 'ALL', label: 'Todos los Meses' }
+  ];
+
+  const handlePrevMonth = () => {
+    if (!setSelectedMonth) return;
+    const currentIndex = monthsList.findIndex(m => m.value === selectedMonth);
+    if (currentIndex >= 0 && currentIndex < monthsList.length - 1) {
+      setSelectedMonth(monthsList[currentIndex + 1].value);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (!setSelectedMonth) return;
+    const currentIndex = monthsList.findIndex(m => m.value === selectedMonth);
+    if (currentIndex > 0) {
+      setSelectedMonth(monthsList[currentIndex - 1].value);
+    }
+  };
+
   // New Licitacion Form
   const [numLic, setNumLic] = useState('');
   const [clienteId, setClienteId] = useState(clientes[0]?.id || '');
   const [moneda, setMoneda] = useState('CLP');
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [fechaCot, setFechaCot] = useState(new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]);
+  const [fecha, setFecha] = useState('2026-08-08');
+  const [fechaCot, setFechaCot] = useState('2026-08-15');
   const [notas, setNotas] = useState('');
 
   const getClienteNombre = (id) => {
@@ -70,21 +95,58 @@ export default function LicitacionesTableView({
 
   return (
     <div className="space-y-4 w-full">
-      {/* Title & Action Bar (100% Width) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 w-full">
+      {/* Title & Action Bar (100% Width) with Contextual Month Stepper */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 w-full">
         <div>
           <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
             <FileText className="w-4 h-4 text-blue-400" />
-            <span>Tabla Operativa: Licitaciones</span>
+            <span>Licitaciones</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            {selectedMonth === 'ALL'
-              ? 'Mostrando historial completo.'
-              : `Filtrado por período: ${selectedMonth}`}
+            Listado de licitaciones realizadas.
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Contextual Month Navigation Controls inside Licitaciones Context */}
+          <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-xs text-zinc-300">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
+              title="Mes Anterior"
+              disabled={selectedMonth === 'ALL'}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center space-x-1.5 px-1.5">
+              <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth && setSelectedMonth(e.target.value)}
+                className="bg-transparent text-xs text-zinc-100 font-semibold focus:outline-none cursor-pointer pr-1"
+              >
+                {monthsList.map(m => (
+                  <option key={m.value} value={m.value} className="bg-zinc-900 font-sans text-zinc-100">
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
+              title="Mes Siguiente"
+              disabled={selectedMonth === '2026-08'}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Status Filter */}
           <div className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-400">
             <Filter className="w-3.5 h-3.5" />
             <select
@@ -110,121 +172,65 @@ export default function LicitacionesTableView({
         </div>
       </div>
 
-      {/* Main Table (100% Width) */}
+      {/* Main Table Canvas */}
       {filtered.length === 0 ? (
         <EmptyState
-          title="Sin licitaciones registradas"
-          description="No se encontraron licitaciones para los filtros aplicados."
+          title="Sin licitaciones para este período"
+          description={selectedMonth === 'ALL' ? "No hay licitaciones registradas." : `No se encontraron licitaciones para ${selectedMonth}. Utiliza las flechas para consultar otro mes.`}
           icon={FileText}
-          action={
-            <Button variant="secondary" size="sm" onClick={() => setShowNewModal(true)}>
-              <Plus className="w-3.5 h-3.5" />
-              <span>Registrar Licitación</span>
-            </Button>
-          }
         />
       ) : (
-        <>
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-hidden bg-zinc-900/40 rounded-xl border border-zinc-800/80 shadow-xs w-full">
-            <table className="w-full text-left text-xs text-zinc-300">
-              <thead className="bg-zinc-900/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
-                <tr>
-                  <th className="px-4 py-3">No. Licitación</th>
-                  <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">Moneda</th>
-                  <th className="px-4 py-3">Insumos</th>
-                  <th className="px-4 py-3">Fecha Ingreso</th>
-                  <th className="px-4 py-3">Límite Cotización</th>
-                  <th className="px-4 py-3">Estatus</th>
-                  <th className="px-4 py-3 text-right">Abrir</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60 font-mono">
-                {filtered.map((lic) => {
-                  const detCount = detalles.filter(d => d.licitacionId === lic.id).length;
-                  return (
-                    <tr
-                      key={lic.id}
-                      onClick={() => onSelectLicitacion(lic)}
-                      className="hover:bg-zinc-800/40 cursor-pointer transition-colors"
-                    >
-                      <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
-                        {lic.numeroLicitacion || lic.id}
-                      </td>
-                      <td className="px-4 py-3 font-sans">
-                        <div className="flex items-center space-x-2 text-zinc-300">
-                          <Building2 className="w-3.5 h-3.5 text-zinc-500" />
-                          <span>{getClienteNombre(lic.clienteId)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono font-bold text-blue-400">
-                        {lic.moneda || 'CLP'}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400">
-                        {detCount} ítems
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400">
-                        {lic.fecha}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400">
-                        {lic.fechaCotizacion || 'N/A'}
-                      </td>
-                      <td className="px-4 py-3 font-sans">
-                        {getEstatusBadge(lic.estatus)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectLicitacion(lic);
-                          }}
-                          className="p-1 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards View */}
-          <div className="md:hidden space-y-3 w-full">
-            {filtered.map((lic) => {
-              const detCount = detalles.filter(d => d.licitacionId === lic.id).length;
-              return (
-                <Card
+        <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xs w-full">
+          <table className="w-full text-left text-xs text-zinc-300">
+            <thead className="bg-zinc-900/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
+              <tr>
+                <th className="px-4 py-3">No. Licitación</th>
+                <th className="px-4 py-3">Cliente</th>
+                <th className="px-4 py-3">Fecha Apertura</th>
+                <th className="px-4 py-3">Fecha Oferta</th>
+                <th className="px-4 py-3">Estatus</th>
+                <th className="px-4 py-3">Moneda</th>
+                <th className="px-4 py-3 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/60 font-mono">
+              {filtered.map((lic) => (
+                <tr
                   key={lic.id}
                   onClick={() => onSelectLicitacion(lic)}
-                  className="cursor-pointer space-y-2.5 w-full"
+                  className="hover:bg-zinc-800/40 transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-zinc-100 text-sm font-mono">
-                      {lic.numeroLicitacion || lic.id}
-                    </span>
+                  <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
+                    <div className="flex items-center space-x-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span className="group-hover:text-blue-400 transition-colors">{lic.numeroLicitacion || lic.id}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-sans text-zinc-300">
+                    {getClienteNombre(lic.clienteId)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-400">
+                    {lic.fecha}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-400">
+                    {lic.fechaCotizacion || 'N/A'}
+                  </td>
+                  <td className="px-4 py-3 font-sans">
                     {getEstatusBadge(lic.estatus)}
-                  </div>
-
-                  <div className="text-xs text-zinc-300 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-zinc-500" />
-                      {getClienteNombre(lic.clienteId)}
-                    </span>
-                    <Badge variant="default">{lic.moneda || 'CLP'}</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500 border-t border-zinc-800/80 pt-2 font-mono">
-                    <span>Ingreso: {lic.fecha}</span>
-                    <span>Cotizar: {lic.fechaCotizacion || 'N/A'}</span>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </>
+                  </td>
+                  <td className="px-4 py-3 font-bold text-zinc-300">
+                    {lic.moneda || 'CLP'}
+                  </td>
+                  <td className="px-4 py-3 text-right font-sans">
+                    <Button variant="ghost" size="xs">
+                      <span>Ver Ficha</span>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Modal Nueva Licitación */}
@@ -235,73 +241,68 @@ export default function LicitacionesTableView({
       >
         <form onSubmit={handleCreateSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Número / Identificador Licitación</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Número de Licitación / ID *</label>
             <Input
               type="text"
               value={numLic}
               onChange={(e) => setNumLic(e.target.value)}
-              placeholder="Ej: LIC-2025-CDK-0990"
+              placeholder="Ej: LIC-2026-CDK-0899"
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Cliente Solicitante</label>
-              <select
-                value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
-                required
-              >
-                {clientes.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Moneda Operación</label>
-              <select
-                value={moneda}
-                onChange={(e) => setMoneda(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
-              >
-                <option value="CLP">CLP - Pesos Chilenos</option>
-                <option value="USD">USD - Dólares US</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Cliente Solicitante *</label>
+            <select
+              value={clienteId}
+              onChange={(e) => setClienteId(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+            >
+              {clientes.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Fecha Ingreso</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Fecha Recepción</label>
               <Input
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                required
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Fecha Límite Cotizar</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Fecha Límite Cotización</label>
               <Input
                 type="date"
                 value={fechaCot}
                 onChange={(e) => setFechaCot(e.target.value)}
-                required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Notas Internas de Licitación</label>
-            <textarea
-              rows={2}
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Moneda de Cotización</label>
+            <select
+              value={moneda}
+              onChange={(e) => setMoneda(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+            >
+              <option value="CLP">Pesos Chilenos (CLP)</option>
+              <option value="USD">Dólares (USD)</option>
+              <option value="UF">Unidades de Fomento (UF)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Observaciones / Descripción</label>
+            <Input
+              type="text"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Notas de uso interno..."
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+              placeholder="Detalle rápido de la licitación..."
             />
           </div>
 

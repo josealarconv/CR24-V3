@@ -112,20 +112,6 @@ export default function Header({
                 className="w-full pl-9 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-zinc-700"
               />
             </div>
-
-            <div className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-300">
-              <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent text-xs text-zinc-200 focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="2025-01" className="bg-zinc-900">Enero 2025 (Mes Actual)</option>
-                <option value="2024-12" className="bg-zinc-900">Diciembre 2024</option>
-                <option value="2024-11" className="bg-zinc-900">Noviembre 2024</option>
-                <option value="ALL" className="bg-zinc-900">Histórico Completo (Explícito)</option>
-              </select>
-            </div>
           </div>
 
           {/* Network Status, Active User Badge & Logout (Right Justified, No Company Logo) */}

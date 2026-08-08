@@ -40,7 +40,8 @@ export function initStorage() {
   if (!localStorage.getItem(KEYS.PROVEEDORES)) {
     localStorage.setItem(KEYS.PROVEEDORES, JSON.stringify(INITIAL_PROVEEDORES));
   }
-  if (!localStorage.getItem(KEYS.LICITACIONES)) {
+  const rawLicitaciones = localStorage.getItem(KEYS.LICITACIONES);
+  if (!rawLicitaciones || rawLicitaciones.includes('LIC-CODELCO-990') || rawLicitaciones.includes('2025-01')) {
     localStorage.setItem(KEYS.LICITACIONES, JSON.stringify(INITIAL_LICITACIONES));
   }
   if (!localStorage.getItem(KEYS.DETALLES)) {

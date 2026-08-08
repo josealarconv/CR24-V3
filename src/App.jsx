@@ -24,7 +24,7 @@ export default function App() {
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('2025-01');
+  const [selectedMonth, setSelectedMonth] = useState('2026-08');
 
   // Auth State
   const [currentUser, setCurrentUser] = useState(null);
@@ -260,6 +260,7 @@ export default function App() {
               clientes={clientes}
               detalles={detalles}
               selectedMonth={selectedMonth}
+              setSelectedMonth={setSelectedMonth}
               onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
               onAddLicitacion={handleAddLicitacion}
             />
