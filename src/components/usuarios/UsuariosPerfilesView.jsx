@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2, Crown } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2 } from 'lucide-react';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 import { getActiveUser } from '../../services/authService';
 
@@ -21,7 +21,7 @@ export default function UsuariosPerfilesView({
   const [editingUser, setEditingUser] = useState(null);
   const [userEmail, setUserEmail] = useState('');
   const [userNombre, setUserNombre] = useState('');
-  const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-ADMIN');
+  const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-SUPERADMIN');
 
   // Delete User State
   const [deletingUserEmail, setDeletingUserEmail] = useState(null);
@@ -63,7 +63,7 @@ export default function UsuariosPerfilesView({
     setEditingUser(null);
     setUserEmail('');
     setUserNombre('');
-    setUserPerfilId(perfiles[0]?.id || 'PRF-ADMIN');
+    setUserPerfilId(perfiles.find(p => p.id === 'PRF-ADMIN')?.id || perfiles[0]?.id || 'PRF-ADMIN');
     setShowUserModal(true);
   };
 
@@ -122,7 +122,7 @@ export default function UsuariosPerfilesView({
     if (!profileNombre.trim()) return;
 
     let finalPermissions = { ...permissionsMatrix };
-    if (editingProfile && editingProfile.id === 'PRF-ADMIN') {
+    if (editingProfile && ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile.id)) {
       finalPermissions.usuarios = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
       finalPermissions.perfiles = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
       finalPermissions.configuracion = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
@@ -133,7 +133,7 @@ export default function UsuariosPerfilesView({
       nombre: profileNombre.trim(),
       descripcion: profileDesc.trim(),
       permisos: finalPermissions,
-      esProtegido: editingProfile?.id === 'PRF-ADMIN'
+      esProtegido: ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id)
     });
 
     setShowProfileModal(false);
@@ -143,7 +143,7 @@ export default function UsuariosPerfilesView({
   };
 
   const updateMatrixField = (moduleId, action, value) => {
-    if (editingProfile?.id === 'PRF-ADMIN' && ['usuarios', 'perfiles', 'configuracion'].includes(moduleId)) {
+    if (['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id) && ['usuarios', 'perfiles', 'configuracion'].includes(moduleId)) {
       return;
     }
 
@@ -228,7 +228,7 @@ export default function UsuariosPerfilesView({
             </thead>
             <tbody className="divide-y divide-zinc-800/60 font-mono">
               {usuarios.map((u) => {
-                const isRowMaster = u.email.toLowerCase() === 'josealarconv@gmail.com';
+                const isRowMaster = u.email.toLowerCase() === 'josealarconv@gmail.com' || u.perfilId === 'PRF-SUPERADMIN';
                 const isRowAdmin = u.perfilId === 'PRF-ADMIN';
 
                 const canModifyRow = isRowMaster
@@ -239,28 +239,28 @@ export default function UsuariosPerfilesView({
 
                 return (
                   <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
+                    {/* Clean Email Column (No redundant badges) */}
                     <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
-                      <div className="flex items-center space-x-1.5">
-                        <span>{u.email}</span>
-                        {isRowMaster && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-sans font-semibold bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/60">
-                            <Crown className="w-3 h-3 text-amber-400" />
-                            <span>SuperAdmin Master</span>
-                          </span>
-                        )}
-                        {!isRowMaster && isRowAdmin && (
-                          <span className="text-[10px] text-blue-400 font-sans font-normal bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-800/60">
-                            Administrador
-                          </span>
-                        )}
-                      </div>
+                      {u.email}
                     </td>
+
                     <td className="px-4 py-3 font-sans text-zinc-200">
                       {u.nombre}
                     </td>
+
+                    {/* Perfil Asignado Column: Official Badge for SuperAdmin Master, Admin, or Operational */}
                     <td className="px-4 py-3 font-sans">
-                      <Badge variant={isRowAdmin ? 'warning' : 'info'}>{getPerfilNombre(u.perfilId)}</Badge>
+                      {u.perfilId === 'PRF-SUPERADMIN' || isRowMaster ? (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/60 border border-amber-800/80 text-amber-300">
+                          <span>SuperAdmin Master</span>
+                        </span>
+                      ) : isRowAdmin ? (
+                        <Badge variant="warning">Administrador</Badge>
+                      ) : (
+                        <Badge variant="info">{getPerfilNombre(u.perfilId)}</Badge>
+                      )}
                     </td>
+
                     <td className="px-4 py-3 text-zinc-400">
                       {u.fechaRegistro || '2025-01-01'}
                     </td>
@@ -332,7 +332,7 @@ export default function UsuariosPerfilesView({
       {activeTab === 'perfiles' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {perfiles.map((p) => {
-            const isProtected = p.id === 'PRF-ADMIN' || p.esProtegido;
+            const isProtected = ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(p.id) || p.esProtegido;
             return (
               <Card key={p.id} className="space-y-3 flex flex-col justify-between w-full">
                 <div>
@@ -490,7 +490,7 @@ export default function UsuariosPerfilesView({
             />
           </div>
 
-          {editingProfile?.id === 'PRF-ADMIN' && (
+          {['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id) && (
             <p className="text-xs text-amber-400 bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/60 font-mono">
               Los permisos de los módulos de seguridad (Usuarios, Perfiles y Configuración) permanecen bloqueados en este perfil para garantizar el acceso continuo del administrador.
             </p>
@@ -501,7 +501,7 @@ export default function UsuariosPerfilesView({
             <div className="space-y-2.5 bg-zinc-950 p-3 rounded-lg border border-zinc-800">
               {modulesList.map(mod => {
                 const p = permissionsMatrix[mod.id] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
-                const isLockedAdminMod = editingProfile?.id === 'PRF-ADMIN' && ['usuarios', 'perfiles', 'configuracion'].includes(mod.id);
+                const isLockedAdminMod = ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id) && ['usuarios', 'perfiles', 'configuracion'].includes(mod.id);
 
                 return (
                   <div key={mod.id} className="p-2 bg-zinc-900/60 rounded border border-zinc-800 text-xs space-y-1.5">

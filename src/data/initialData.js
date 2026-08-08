@@ -15,6 +15,23 @@ export const INITIAL_CONFIGURACION = {
 
 export const INITIAL_PERFILES = [
   {
+    id: 'PRF-SUPERADMIN',
+    nombre: 'SuperAdmin Master',
+    descripcion: 'Acceso total absoluto inmutable, creador y gestor master del sistema.',
+    esProtegido: true,
+    permisos: {
+      licitaciones: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      clientes: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      proveedores: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      consultas: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      cotizaciones: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      anexos: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      usuarios: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      perfiles: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' },
+      configuracion: { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' }
+    }
+  },
+  {
     id: 'PRF-ADMIN',
     nombre: 'Administrador',
     descripcion: 'Acceso total a la gestión del sistema, usuarios, perfiles, márgenes y finanzas.',
@@ -69,7 +86,7 @@ export const INITIAL_USUARIOS = [
   {
     email: 'josealarconv@gmail.com',
     nombre: 'José Alarcón',
-    perfilId: 'PRF-ADMIN',
+    perfilId: 'PRF-SUPERADMIN',
     activo: true,
     fechaRegistro: '2025-01-01'
   },

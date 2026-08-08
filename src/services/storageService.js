@@ -55,11 +55,24 @@ export function initStorage() {
   if (!localStorage.getItem(KEYS.ANEXOS)) {
     localStorage.setItem(KEYS.ANEXOS, JSON.stringify(INITIAL_ANEXOS));
   }
-  if (!localStorage.getItem(KEYS.PERFILES)) {
+
+  // Ensure PERFILES contains PRF-SUPERADMIN
+  const rawPerfiles = localStorage.getItem(KEYS.PERFILES);
+  if (!rawPerfiles) {
     localStorage.setItem(KEYS.PERFILES, JSON.stringify(INITIAL_PERFILES));
+  } else {
+    try {
+      let perfilesList = JSON.parse(rawPerfiles);
+      if (!perfilesList.some(p => p.id === 'PRF-SUPERADMIN')) {
+        perfilesList = [INITIAL_PERFILES[0], ...perfilesList];
+        localStorage.setItem(KEYS.PERFILES, JSON.stringify(perfilesList));
+      }
+    } catch (e) {
+      localStorage.setItem(KEYS.PERFILES, JSON.stringify(INITIAL_PERFILES));
+    }
   }
 
-  // Migrate or initialize Usuarios to ensure josealarconv@gmail.com is present and stale email is removed
+  // Migrate or initialize Usuarios to ensure josealarconv@gmail.com has PRF-SUPERADMIN
   const rawUsers = localStorage.getItem(KEYS.USUARIOS);
   if (!rawUsers) {
     localStorage.setItem(KEYS.USUARIOS, JSON.stringify(INITIAL_USUARIOS));
@@ -68,11 +81,10 @@ export function initStorage() {
       let usersList = JSON.parse(rawUsers);
       let modified = false;
 
-      // Replace old jalarconv@gmail.com with josealarconv@gmail.com
       usersList = usersList.map(u => {
-        if (u.email === 'jalarconv@gmail.com') {
+        if (u.email.toLowerCase() === 'jalarconv@gmail.com' || u.email.toLowerCase() === 'josealarconv@gmail.com') {
           modified = true;
-          return { ...u, email: 'josealarconv@gmail.com' };
+          return { ...u, email: 'josealarconv@gmail.com', perfilId: 'PRF-SUPERADMIN' };
         }
         return u;
       });
@@ -81,7 +93,7 @@ export function initStorage() {
         usersList.push({
           email: 'josealarconv@gmail.com',
           nombre: 'José Alarcón',
-          perfilId: 'PRF-ADMIN',
+          perfilId: 'PRF-SUPERADMIN',
           activo: true,
           fechaRegistro: '2025-01-01'
         });
@@ -96,7 +108,6 @@ export function initStorage() {
     }
   }
 
-  // Migrate active user email key if stale
   const activeEmail = localStorage.getItem('cr24_active_user_email');
   if (!activeEmail || activeEmail === 'jalarconv@gmail.com') {
     localStorage.setItem('cr24_active_user_email', 'josealarconv@gmail.com');
