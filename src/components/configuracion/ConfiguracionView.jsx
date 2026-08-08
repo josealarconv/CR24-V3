@@ -1,22 +1,65 @@
-import React, { useState } from 'react';
-import { Settings, Save, Check, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Save, Check, X, Image as ImageIcon } from 'lucide-react';
 import { Button, Card, Input } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
 export default function ConfiguracionView({ config = {}, onSaveConfig }) {
-  const [empresa, setEmpresa] = useState(config.empresa || ASSETS.COMPANY_NAME);
-  const [rut, setRut] = useState(config.rut || ASSETS.COMPANY_RUT);
-  const [direccion, setDireccion] = useState(config.direccion || ASSETS.COMPANY_ADDRESS);
-  const [telefono, setTelefono] = useState(config.telefono || ASSETS.COMPANY_PHONE);
-  const [email, setEmail] = useState(config.email || ASSETS.COMPANY_EMAIL);
-  const [logoUrl, setLogoUrl] = useState(config.logoUrl || ASSETS.COMPANY_LOGO_URL);
-  const [condiciones, setCondiciones] = useState(config.condicionesCotizacionDefecto || ASSETS.condicionesCotizacionDefecto);
+  const getInitialValues = () => ({
+    empresa: config.empresa || ASSETS.COMPANY_NAME,
+    rut: config.rut || ASSETS.COMPANY_RUT,
+    direccion: config.direccion || ASSETS.COMPANY_ADDRESS,
+    telefono: config.telefono || ASSETS.COMPANY_PHONE,
+    email: config.email || ASSETS.COMPANY_EMAIL,
+    logoUrl: config.logoUrl || ASSETS.COMPANY_LOGO_URL,
+    condiciones: config.condicionesCotizacionDefecto || ASSETS.condicionesCotizacionDefecto
+  });
+
+  const [initials, setInitials] = useState(getInitialValues());
+  const [empresa, setEmpresa] = useState(initials.empresa);
+  const [rut, setRut] = useState(initials.rut);
+  const [direccion, setDireccion] = useState(initials.direccion);
+  const [telefono, setTelefono] = useState(initials.telefono);
+  const [email, setEmail] = useState(initials.email);
+  const [logoUrl, setLogoUrl] = useState(initials.logoUrl);
+  const [condiciones, setCondiciones] = useState(initials.condiciones);
   const [saved, setSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  useEffect(() => {
+    const updatedInit = getInitialValues();
+    setInitials(updatedInit);
+    setEmpresa(updatedInit.empresa);
+    setRut(updatedInit.rut);
+    setDireccion(updatedInit.direccion);
+    setTelefono(updatedInit.telefono);
+    setEmail(updatedInit.email);
+    setLogoUrl(updatedInit.logoUrl);
+    setCondiciones(updatedInit.condiciones);
+  }, [config]);
+
+  const isDirty =
+    empresa !== initials.empresa ||
+    rut !== initials.rut ||
+    direccion !== initials.direccion ||
+    telefono !== initials.telefono ||
+    email !== initials.email ||
+    logoUrl !== initials.logoUrl ||
+    condiciones !== initials.condiciones;
+
+  const handleCancel = () => {
+    setEmpresa(initials.empresa);
+    setRut(initials.rut);
+    setDireccion(initials.direccion);
+    setTelefono(initials.telefono);
+    setEmail(initials.email);
+    setLogoUrl(initials.logoUrl);
+    setCondiciones(initials.condiciones);
+    setImageError(false);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSaveConfig({
+    const updatedData = {
       ...config,
       empresa,
       rut,
@@ -25,7 +68,19 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
       email,
       logoUrl,
       condicionesCotizacionDefecto: condiciones
-    });
+    };
+    onSaveConfig(updatedData);
+
+    const newInitials = {
+      empresa,
+      rut,
+      direccion,
+      telefono,
+      email,
+      logoUrl,
+      condiciones
+    };
+    setInitials(newInitials);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -131,7 +186,7 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Predetermonadas para Cotizaciones PDF</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Predeterminadas para Cotizaciones PDF</label>
             <textarea
               rows={3}
               value={condiciones}
@@ -140,12 +195,19 @@ export default function ConfiguracionView({ config = {}, onSaveConfig }) {
             />
           </div>
 
-          <div className="pt-3 border-t border-zinc-800 flex justify-end">
-            <Button type="submit" variant="primary" size="md">
-              {saved ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
-              <span>{saved ? 'Guardado' : 'Guardar Cambios'}</span>
-            </Button>
-          </div>
+          {/* Action Buttons: ONLY visible if form has changes (isDirty === true) */}
+          {isDirty && (
+            <div className="pt-3 border-t border-zinc-800 flex items-center justify-end space-x-2 animate-fadeIn">
+              <Button type="button" variant="ghost" size="md" onClick={handleCancel}>
+                <X className="w-4 h-4" />
+                <span>Cancelar</span>
+              </Button>
+              <Button type="submit" variant="primary" size="md">
+                {saved ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
+                <span>{saved ? 'Guardado' : 'Guardar Cambios'}</span>
+              </Button>
+            </div>
+          )}
         </form>
       </Card>
     </div>
