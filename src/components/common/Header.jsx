@@ -1,122 +1,144 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Wifi, WifiOff, RefreshCw, Calendar, Menu, Sparkles } from 'lucide-react';
+import {
+  FileText,
+  Users,
+  Building2,
+  DollarSign,
+  FileCheck,
+  Paperclip,
+  Settings,
+  ShieldCheck,
+  Search,
+  Calendar,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  LogOut,
+  ChevronDown
+} from 'lucide-react';
 import { ASSETS } from '../../config/assets';
+import { getActiveUser, getUserProfile, setActiveUserEmail } from '../../services/authService';
+import { getData } from '../../services/storageService';
 
 export default function Header({
-  activeTab,
-  setActiveTab,
+  activeView,
+  setActiveView,
   searchTerm,
   setSearchTerm,
   selectedMonth,
   setSelectedMonth,
-  openAiModal,
-  toggleMobileMenu
+  counts = {}
 }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [syncState, setSyncState] = useState('Sincronizado');
+  const [syncStatus, setSyncStatus] = useState('Sincronizado');
+  const [activeUser, setActiveUser] = useState(getActiveUser());
+  const [userProfile, setUserProfile] = useState(getUserProfile(activeUser));
+  const [allUsers, setAllUsers] = useState(getData('USUARIOS'));
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      setSyncState('Sincronizando');
-      setTimeout(() => setSyncState('Sincronizado'), 1200);
+      setSyncStatus('Sincronizando...');
+      setTimeout(() => setSyncStatus('Sincronizado'), 1200);
     };
     const handleOffline = () => {
       setIsOnline(false);
-      setSyncState('Offline');
+      setSyncStatus('Offline');
+    };
+
+    const handleAuthChange = () => {
+      const u = getActiveUser();
+      setActiveUser(u);
+      setUserProfile(getUserProfile(u));
     };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('auth-state-changed', handleAuthChange);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('auth-state-changed', handleAuthChange);
     };
   }, []);
 
-  return (
-    <header className="bg-zinc-950/90 backdrop-blur-md text-zinc-100 border-b border-zinc-800/80 sticky top-0 z-30 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 gap-4">
-          
-          {/* Left: Mobile Trigger + App Logo & Name */}
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={toggleMobileMenu}
-              className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
-              aria-label="Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+  const handleSwitchUser = (email) => {
+    setActiveUserEmail(email);
+    setShowUserDropdown(false);
+  };
 
-            <div className="flex items-center space-x-2.5">
-              <img
-                src={ASSETS.APP_LOGO_URL}
-                alt="CR24 Logo"
-                className="w-8 h-8 object-contain rounded-lg bg-zinc-900 border border-zinc-800 p-1 shadow-sm"
-              />
+  const navItems = [
+    { id: 'licitaciones', label: 'Licitaciones', icon: FileText, count: counts.licitaciones, module: 'licitaciones' },
+    { id: 'clientes', label: 'Clientes', icon: Users, count: counts.clientes, module: 'clientes' },
+    { id: 'proveedores', label: 'Proveedores', icon: Building2, count: counts.proveedores, module: 'proveedores' },
+    { id: 'consultas', label: 'Consultas de Precios', icon: DollarSign, count: counts.consultas, module: 'consultas' },
+    { id: 'cotizaciones', label: 'Cotizaciones PDF', icon: FileCheck, count: counts.cotizaciones, module: 'cotizaciones' },
+    { id: 'anexos', label: 'Anexos', icon: Paperclip, count: counts.anexos, module: 'anexos' },
+    { id: 'usuarios', label: 'Usuarios y Perfiles', icon: ShieldCheck, count: counts.usuarios, module: 'usuarios' },
+    { id: 'configuracion', label: 'Configuración', icon: Settings, module: 'configuracion' }
+  ];
+
+  return (
+    <header className="bg-zinc-950 border-b border-zinc-900 sticky top-0 z-30 shadow-md w-full">
+      {/* 100% Width Container */}
+      <div className="w-full px-4 sm:px-6 py-2.5">
+        <div className="flex items-center justify-between gap-4">
+          
+          {/* Logo & Enterprise Identity */}
+          <div className="flex items-center space-x-3 shrink-0">
+            <img
+              src={ASSETS.APP_LOGO_URL}
+              alt="CR24 Logo"
+              className="w-8 h-8 object-contain bg-zinc-900 border border-zinc-800 p-1 rounded-lg shadow-sm"
+            />
+            <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-base tracking-tight text-zinc-100">
+                <span className="font-extrabold text-base tracking-tight text-zinc-100 font-mono">
                   {ASSETS.APP_NAME}
                 </span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
                   {ASSETS.APP_VERSION}
                 </span>
               </div>
+              <p className="text-[11px] text-zinc-400 hidden sm:block">
+                {ASSETS.COMPANY_NAME}
+              </p>
             </div>
           </div>
 
-          {/* Center: Search & Month Selector (Bloque IV Puntos 30-32) */}
-          <div className="flex-1 max-w-lg hidden md:flex items-center space-x-2.5">
+          {/* Search & Month Period Filter */}
+          <div className="flex-1 max-w-2xl hidden md:flex items-center space-x-2">
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-3.5 w-3.5 text-zinc-500" />
-              </div>
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar licitaciones, clientes, RUT, proveedores..."
-                className="block w-full pl-9 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-zinc-700 transition-colors"
+                placeholder="Buscar licitación, cliente, RUT, proveedor..."
+                className="w-full pl-9 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100 focus:outline-none focus:border-zinc-700"
               />
             </div>
 
-            {/* Monthly Filter Selector */}
             <div className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-300">
-              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+              <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent text-xs text-zinc-300 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs text-zinc-200 focus:outline-none cursor-pointer pr-1"
               >
-                <option value="2025-01" className="bg-zinc-900 text-zinc-200">Enero 2025 (Mes Actual)</option>
-                <option value="2024-12" className="bg-zinc-900 text-zinc-200">Diciembre 2024</option>
-                <option value="2024-11" className="bg-zinc-900 text-zinc-200">Noviembre 2024</option>
-                <option value="ALL" className="bg-zinc-900 text-zinc-200">Histórico Completo (Explícito)</option>
+                <option value="2025-01" className="bg-zinc-900">Enero 2025 (Mes Actual)</option>
+                <option value="2024-12" className="bg-zinc-900">Diciembre 2024</option>
+                <option value="2024-11" className="bg-zinc-900">Noviembre 2024</option>
+                <option value="ALL" className="bg-zinc-900">Histórico Completo (Explícito)</option>
               </select>
             </div>
           </div>
 
-          {/* Right: Network Status + Gemini AI + Company Logo */}
-          <div className="flex items-center space-x-2.5">
-            
-            {/* Gemini AI Trigger Button */}
-            <button
-              onClick={openAiModal}
-              disabled={!isOnline}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                isOnline
-                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/80 cursor-pointer shadow-sm'
-                  : 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
-              }`}
-              title={isOnline ? 'Consultar Asistente Gemini AI' : 'Gemini no disponible offline'}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">IA Gemini</span>
-            </button>
-
-            {/* Network Status Badge (Bloque IX Punto 88) */}
+          {/* Network Status & RBAC User Selector */}
+          <div className="flex items-center space-x-3 shrink-0">
+            {/* Connection Status Badge */}
             <div
               className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border ${
                 isOnline
@@ -126,12 +148,12 @@ export default function Header({
             >
               {isOnline ? (
                 <>
-                  {syncState === 'Sincronizando' ? (
+                  {syncStatus.includes('Sincronizando') ? (
                     <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
                   ) : (
                     <Wifi className="w-3 h-3 text-emerald-400" />
                   )}
-                  <span className="hidden sm:inline">{syncState}</span>
+                  <span className="hidden sm:inline">{syncStatus}</span>
                 </>
               ) : (
                 <>
@@ -141,17 +163,63 @@ export default function Header({
               )}
             </div>
 
-            {/* Company Logo Header */}
+            {/* Active User Profile Widget */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className="flex items-center space-x-2 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-xs transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                <div className="text-left hidden sm:block">
+                  <span className="block font-semibold text-zinc-200 text-[11px] leading-tight">
+                    {activeUser?.nombre}
+                  </span>
+                  <span className="block text-[9px] text-zinc-400 font-mono leading-tight">
+                    {userProfile?.nombre}
+                  </span>
+                </div>
+                <ChevronDown className="w-3 h-3 text-zinc-500" />
+              </button>
+
+              {/* User Selector Dropdown (Testing Whitelisted Access) */}
+              {showUserDropdown && (
+                <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl py-2 z-50">
+                  <div className="px-3 py-1.5 border-b border-zinc-800 text-[10px] uppercase font-mono text-zinc-500">
+                    Cambiar Usuario Activo (Lista Blanca)
+                  </div>
+                  {allUsers.map((u) => (
+                    <button
+                      key={u.email}
+                      onClick={() => handleSwitchUser(u.email)}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-zinc-800 transition-colors ${
+                        u.email === activeUser?.email ? 'bg-zinc-800/60 font-bold text-blue-400' : 'text-zinc-300'
+                      }`}
+                    >
+                      <div>
+                        <span className="block font-medium">{u.nombre}</span>
+                        <span className="block text-[10px] text-zinc-500 font-mono">{u.email}</span>
+                      </div>
+                      {!u.activo && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-950 text-red-400 border border-red-900">
+                          Inactivo
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <img
               src={ASSETS.COMPANY_LOGO_URL}
               alt="Orión Logo"
-              className="w-7 h-7 object-contain rounded bg-white p-0.5 hidden sm:block shadow-sm"
+              className="w-7 h-7 object-contain bg-white p-0.5 rounded shadow-xs hidden sm:block"
             />
           </div>
 
         </div>
 
-        {/* Mobile Search Input */}
+        {/* Mobile Search input */}
         <div className="py-2 md:hidden">
           <div className="relative">
             <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-zinc-500" />
@@ -159,12 +227,42 @@ export default function Header({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar licitaciones, clientes..."
+              placeholder="Buscar licitación, cliente..."
               className="block w-full pl-9 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs placeholder-zinc-500 text-zinc-100"
             />
           </div>
         </div>
+      </div>
 
+      {/* 100% Width Tabbed Navigation Bar */}
+      <div className="bg-zinc-900 border-t border-zinc-800/80 overflow-x-auto scrollbar-none w-full">
+        <div className="w-full px-4 sm:px-6 flex space-x-1 min-w-max py-1">
+          {navItems.map(item => {
+            const Icon = item.icon;
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveView(item.id)}
+                className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/80 font-semibold shadow-xs'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-400' : 'text-zinc-500'}`} />
+                <span>{item.label}</span>
+                {item.count !== undefined && item.count > 0 && (
+                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-500'
+                  }`}>
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AppSheetNavbar from './components/appsheet/AppSheetNavbar';
+import Header from './components/common/Header';
 import LicitacionesTableView from './components/appsheet/LicitacionesTableView';
 import LicitacionMasterDetail from './components/appsheet/LicitacionMasterDetail';
 import ConsultasTableView from './components/appsheet/ConsultasTableView';
@@ -7,7 +7,7 @@ import CotizacionesTableView from './components/appsheet/CotizacionesTableView';
 import AnexosTableView from './components/appsheet/AnexosTableView';
 import ClientesList from './components/clientes/ClientesList';
 import ProveedoresList from './components/proveedores/ProveedoresList';
-import GeminiAssistantModal from './components/ai/GeminiAssistantModal';
+import UsuariosPerfilesView from './components/usuarios/UsuariosPerfilesView';
 import ConfiguracionView from './components/configuracion/ConfiguracionView';
 import {
   initStorage,
@@ -15,20 +15,20 @@ import {
   saveData,
   addItem
 } from './services/storageService';
+import { getActiveUser, hasPermission } from './services/authService';
 
 export default function App() {
-  const [activeView, setActiveView] = useState('licitaciones'); // 'licitaciones', 'clientes', 'proveedores', 'consultas', 'cotizaciones', 'anexos', 'configuracion'
+  const [activeView, setActiveView] = useState('licitaciones');
   const [selectedLicitacion, setSelectedLicitacion] = useState(null);
 
-  // Filters state (Bloque IV)
+  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('2025-01');
 
-  // AI Modal state (Bloque VIII)
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-  const [aiQuery, setAiQuery] = useState('');
+  // RBAC State
+  const [currentUser, setCurrentUser] = useState(getActiveUser());
 
-  // Storage State
+  // Data Store
   const [licitaciones, setLicitaciones] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -36,6 +36,10 @@ export default function App() {
   const [consultas, setConsultas] = useState([]);
   const [cotizaciones, setCotizaciones] = useState([]);
   const [anexos, setAnexos] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [perfiles, setPerfiles] = useState([]);
+  const [notasLicitacion, setNotasLicitacion] = useState([]);
+  const [investigacionesIa, setInvestigacionesIa] = useState([]);
   const [configuracion, setConfiguracion] = useState({});
 
   useEffect(() => {
@@ -43,8 +47,15 @@ export default function App() {
     loadAllData();
 
     const handleStorageUpdate = () => loadAllData();
+    const handleAuthChange = () => setCurrentUser(getActiveUser());
+
     window.addEventListener('storage-update', handleStorageUpdate);
-    return () => window.removeEventListener('storage-update', handleStorageUpdate);
+    window.addEventListener('auth-state-changed', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage-update', handleStorageUpdate);
+      window.removeEventListener('auth-state-changed', handleAuthChange);
+    };
   }, []);
 
   const loadAllData = () => {
@@ -55,10 +66,14 @@ export default function App() {
     setConsultas(getData('CONSULTAS'));
     setCotizaciones(getData('COTIZACIONES'));
     setAnexos(getData('ANEXOS'));
+    setUsuarios(getData('USUARIOS'));
+    setPerfiles(getData('PERFILES'));
+    setNotasLicitacion(getData('NOTAS_LICITACION'));
+    setInvestigacionesIa(getData('INVESTIGACIONES_IA'));
     setConfiguracion(getData('CONFIGURACION'));
   };
 
-  // Monthly filtering (Bloque IV punto 30)
+  // Monthly & Search Filtering
   const filteredLicitaciones = licitaciones.filter(lic => {
     if (selectedMonth !== 'ALL') {
       if (lic.fecha && !lic.fecha.startsWith(selectedMonth)) return false;
@@ -75,9 +90,18 @@ export default function App() {
   });
 
   const handleAddLicitacion = (newLic) => {
-    const updated = addItem('LICITACIONES', newLic);
+    const updated = addItem('LICITACIONES', { ...newLic, createdBy: currentUser.email });
     setLicitaciones(updated);
     setSelectedLicitacion(newLic);
+  };
+
+  const handleUpdateEstatusLicitacion = (licId, newEstatus) => {
+    const updated = licitaciones.map(l => l.id === licId ? { ...l, estatus: newEstatus } : l);
+    saveData('LICITACIONES', updated);
+    setLicitaciones(updated);
+    if (selectedLicitacion && selectedLicitacion.id === licId) {
+      setSelectedLicitacion(prev => ({ ...prev, estatus: newEstatus }));
+    }
   };
 
   const handleAddDetalle = (newDet) => {
@@ -95,6 +119,53 @@ export default function App() {
     setAnexos(updated);
   };
 
+  const handleAddNotaLicitacion = (newNota) => {
+    const updated = addItem('NOTAS_LICITACION', newNota);
+    setNotasLicitacion(updated);
+  };
+
+  const handleAddInvestigacionIa = (newInv) => {
+    const updated = addItem('INVESTIGACIONES_IA', newInv);
+    setInvestigacionesIa(updated);
+  };
+
+  const handleAddCotizacionVersion = (newCot) => {
+    const updated = addItem('COTIZACIONES', newCot);
+    setCotizaciones(updated);
+  };
+
+  const handleSaveUsuario = (userObj) => {
+    const existingIndex = usuarios.findIndex(u => u.email.toLowerCase() === userObj.email.toLowerCase());
+    let updated = [];
+    if (existingIndex >= 0) {
+      updated = [...usuarios];
+      updated[existingIndex] = userObj;
+    } else {
+      updated = [...usuarios, userObj];
+    }
+    saveData('USUARIOS', updated);
+    setUsuarios(updated);
+  };
+
+  const handleToggleUsuarioActivo = (email) => {
+    const updated = usuarios.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, activo: !u.activo } : u);
+    saveData('USUARIOS', updated);
+    setUsuarios(updated);
+  };
+
+  const handleSavePerfil = (perfilObj) => {
+    const existingIndex = perfiles.findIndex(p => p.id === perfilObj.id);
+    let updated = [];
+    if (existingIndex >= 0) {
+      updated = [...perfiles];
+      updated[existingIndex] = perfilObj;
+    } else {
+      updated = [...perfiles, perfilObj];
+    }
+    saveData('PERFILES', updated);
+    setPerfiles(updated);
+  };
+
   const handleAddCliente = (newCli) => {
     const updated = addItem('CLIENTES', newCli);
     setClientes(updated);
@@ -110,15 +181,10 @@ export default function App() {
     setConfiguracion(newConfig);
   };
 
-  const openAiWithQuery = (prompt) => {
-    setAiQuery(prompt);
-    setIsAiModalOpen(true);
-  };
-
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      {/* AppSheet Header & Tabbed Navbar */}
-      <AppSheetNavbar
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white w-full">
+      {/* 100% Screen Width Header */}
+      <Header
         activeView={activeView}
         setActiveView={(v) => {
           setActiveView(v);
@@ -128,19 +194,19 @@ export default function App() {
         setSearchTerm={setSearchTerm}
         selectedMonth={selectedMonth}
         setSelectedMonth={setSelectedMonth}
-        openAiModal={() => openAiWithQuery('Analizar estado general de licitaciones y proveedores')}
         counts={{
           licitaciones: filteredLicitaciones.length,
           clientes: clientes.length,
           proveedores: proveedores.length,
           consultas: consultas.length,
           cotizaciones: cotizaciones.length,
-          anexos: anexos.length
+          anexos: anexos.length,
+          usuarios: usuarios.length
         }}
       />
 
-      {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* 100% Screen Width Main Content Container */}
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
         {activeView === 'licitaciones' && (
           selectedLicitacion ? (
             <LicitacionMasterDetail
@@ -149,12 +215,19 @@ export default function App() {
               detalles={detalles.filter(d => d.licitacionId === selectedLicitacion.id)}
               consultas={consultas.filter(c => detalles.some(d => d.id === c.detalleId && d.licitacionId === selectedLicitacion.id))}
               proveedores={proveedores}
-              anexos={anexos.filter(a => a.entidadId === selectedLicitacion.id)}
+              anexos={anexos.filter(a => a.licitacionId === selectedLicitacion.id)}
+              notasLicitacion={notasLicitacion.filter(n => n.licitacionId === selectedLicitacion.id)}
+              investigacionesIa={investigacionesIa.filter(i => detalles.some(d => d.id === i.detalleId && d.licitacionId === selectedLicitacion.id))}
+              cotizaciones={cotizaciones.filter(c => c.licitacionId === selectedLicitacion.id)}
+              currentUser={currentUser}
               onBack={() => setSelectedLicitacion(null)}
               onAddDetalle={handleAddDetalle}
               onAddConsulta={handleAddConsulta}
               onAddAnexo={handleAddAnexo}
-              openAiAssistant={openAiWithQuery}
+              onAddNotaLicitacion={handleAddNotaLicitacion}
+              onAddInvestigacionIa={handleAddInvestigacionIa}
+              onAddCotizacionVersion={handleAddCotizacionVersion}
+              onUpdateEstatus={handleUpdateEstatusLicitacion}
             />
           ) : (
             <LicitacionesTableView
@@ -205,6 +278,16 @@ export default function App() {
           />
         )}
 
+        {activeView === 'usuarios' && (
+          <UsuariosPerfilesView
+            usuarios={usuarios}
+            perfiles={perfiles}
+            onSaveUsuario={handleSaveUsuario}
+            onSavePerfil={handleSavePerfil}
+            onToggleUsuarioActivo={handleToggleUsuarioActivo}
+          />
+        )}
+
         {activeView === 'configuracion' && (
           <ConfiguracionView
             config={configuracion}
@@ -212,19 +295,6 @@ export default function App() {
           />
         )}
       </main>
-
-      {/* Gemini AI Modal */}
-      <GeminiAssistantModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        initialQuery={aiQuery}
-        contextData={{
-          totalLicitaciones: licitaciones.length,
-          totalClientes: clientes.length,
-          totalProveedores: proveedores.length,
-          licitacionActual: selectedLicitacion
-        }}
-      />
     </div>
   );
 }
