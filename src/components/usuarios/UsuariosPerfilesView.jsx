@@ -16,8 +16,9 @@ export default function UsuariosPerfilesView({
 
   const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'perfiles'
 
-  // New User Form State
-  const [showNewUserModal, setShowNewUserModal] = useState(false);
+  // New / Edit User Form State
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null); // null if creating, user object if editing
   const [userEmail, setUserEmail] = useState('');
   const [userNombre, setUserNombre] = useState('');
   const [userPerfilId, setUserPerfilId] = useState(perfiles[0]?.id || 'PRF-ADMIN');
@@ -58,7 +59,23 @@ export default function UsuariosPerfilesView({
     return p ? p.nombre : perfilId;
   };
 
-  const handleCreateUserSubmit = (e) => {
+  const handleOpenCreateUser = () => {
+    setEditingUser(null);
+    setUserEmail('');
+    setUserNombre('');
+    setUserPerfilId(perfiles[0]?.id || 'PRF-ADMIN');
+    setShowUserModal(true);
+  };
+
+  const handleOpenEditUser = (user) => {
+    setEditingUser(user);
+    setUserEmail(user.email);
+    setUserNombre(user.nombre);
+    setUserPerfilId(user.perfilId);
+    setShowUserModal(true);
+  };
+
+  const handleUserFormSubmit = (e) => {
     e.preventDefault();
     if (!userEmail.trim() || !userNombre.trim()) return;
 
@@ -66,11 +83,12 @@ export default function UsuariosPerfilesView({
       email: userEmail.trim().toLowerCase(),
       nombre: userNombre.trim(),
       perfilId: userPerfilId || perfiles[0]?.id || 'PRF-ADMIN',
-      activo: true,
-      fechaRegistro: new Date().toISOString().split('T')[0]
+      activo: editingUser ? editingUser.activo : true,
+      fechaRegistro: editingUser ? editingUser.fechaRegistro : new Date().toISOString().split('T')[0]
     });
 
-    setShowNewUserModal(false);
+    setShowUserModal(false);
+    setEditingUser(null);
     setUserEmail('');
     setUserNombre('');
   };
@@ -157,7 +175,7 @@ export default function UsuariosPerfilesView({
 
         <div className="flex items-center space-x-2">
           {activeTab === 'usuarios' ? (
-            <Button variant="primary" size="sm" onClick={() => setShowNewUserModal(true)}>
+            <Button variant="primary" size="sm" onClick={handleOpenCreateUser}>
               <UserPlus className="w-3.5 h-3.5" />
               <span>Registrar Usuario</span>
             </Button>
@@ -213,10 +231,6 @@ export default function UsuariosPerfilesView({
                 const isRowMaster = u.email.toLowerCase() === 'josealarconv@gmail.com';
                 const isRowAdmin = u.perfilId === 'PRF-ADMIN';
 
-                // Rules:
-                // 1. Row Master (josealarconv@gmail.com) can NEVER be deleted or deactivated by anyone.
-                // 2. Row Admin (other admins): ONLY the Master logged user (isMasterLogged) can delete/deactivate them.
-                // 3. Operational users: can be deleted/deactivated by any Admin or Master.
                 const canModifyRow = isRowMaster
                   ? false
                   : isRowAdmin
@@ -250,39 +264,57 @@ export default function UsuariosPerfilesView({
                     <td className="px-4 py-3 text-zinc-400">
                       {u.fechaRegistro || '2025-01-01'}
                     </td>
+                    
+                    {/* Estado Acceso Column: Interactive Toggle Switch Pill */}
                     <td className="px-4 py-3 font-sans">
-                      {u.activo ? (
-                        <span className="inline-flex items-center space-x-1 text-emerald-400 font-medium">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Activo (Lista Blanca)</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center space-x-1 text-red-400 font-medium">
-                          <X className="w-3.5 h-3.5" />
-                          <span>Bloqueado</span>
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        disabled={!canModifyRow}
+                        onClick={() => onToggleUsuarioActivo(u.email)}
+                        className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                          u.activo
+                            ? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-400 hover:bg-emerald-900/80 cursor-pointer'
+                            : 'bg-red-950/60 border-red-800/80 text-red-400 hover:bg-red-900/80 cursor-pointer'
+                        } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        title={canModifyRow ? (u.activo ? "Hacer clic para Desactivar Acceso" : "Hacer clic para Activar Acceso") : "Estado de usuario protegido"}
+                      >
+                        {u.activo ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3.5 h-3.5 text-red-400" />
+                            <span>Bloqueado</span>
+                          </>
+                        )}
+                      </button>
                     </td>
-                    <td className="px-4 py-3 text-right font-sans">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          variant={u.activo ? 'danger' : 'secondary'}
-                          size="xs"
-                          disabled={!canModifyRow}
-                          onClick={() => onToggleUsuarioActivo(u.email)}
-                        >
-                          {u.activo ? 'Desactivar' : 'Activar Acceso'}
-                        </Button>
 
+                    {/* Acciones Column: Editar (Pencil) & Borrar (Trash) */}
+                    <td className="px-4 py-3 text-right font-sans">
+                      <div className="flex items-center justify-end space-x-1.5">
                         {canModifyRow ? (
-                          <button
-                            type="button"
-                            onClick={() => setDeletingUserEmail(u.email)}
-                            className="p-1 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
-                            title="Eliminar de Lista Blanca"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditUser(u)}
+                              className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                              title="Editar Nombre y Perfil"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setDeletingUserEmail(u.email)}
+                              className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                              title="Eliminar de Lista Blanca"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         ) : (
                           <Lock className="w-3.5 h-3.5 text-zinc-600" title={isRowMaster ? "Usuario Master protegido inmutable" : "Solo el SuperAdmin Master puede gestionar cuentas Administradoras"} />
                         )}
@@ -370,21 +402,25 @@ export default function UsuariosPerfilesView({
         </div>
       </Modal>
 
-      {/* Modal Crear Usuario */}
+      {/* Modal Crear / Editar Usuario */}
       <Modal
-        isOpen={showNewUserModal}
-        onClose={() => setShowNewUserModal(false)}
-        title="Autorizar Usuario en Lista Blanca"
+        isOpen={showUserModal}
+        onClose={() => {
+          setShowUserModal(false);
+          setEditingUser(null);
+        }}
+        title={editingUser ? `Editar Usuario: ${editingUser.email}` : 'Autorizar Usuario en Lista Blanca'}
       >
-        <form onSubmit={handleCreateUserSubmit} className="space-y-3">
+        <form onSubmit={handleUserFormSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Correo Electrónico</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Correo Electrónico (No modificable)</label>
             <Input
               type="email"
               value={userEmail}
               onChange={(e) => setUserEmail(e.target.value)}
               placeholder="ejemplo@suministrosorion.cl"
               required
+              disabled={!!editingUser}
             />
           </div>
 
@@ -413,11 +449,14 @@ export default function UsuariosPerfilesView({
           </div>
 
           <div className="flex justify-end space-x-2 pt-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setShowNewUserModal(false)}>
+            <Button variant="ghost" size="sm" type="button" onClick={() => {
+              setShowUserModal(false);
+              setEditingUser(null);
+            }}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" type="submit">
-              Guardar Usuario
+              {editingUser ? 'Guardar Cambios' : 'Guardar Usuario'}
             </Button>
           </div>
         </form>
