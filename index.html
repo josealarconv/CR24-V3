@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/GttJ57k1/FAB34803-3D79-40A2-B2DE-874DF03EAD98.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="CR24 - Sistema de Gestión de Licitaciones, Proveedores, Consultas de Precios y Cotizaciones para Suministros Industriales Orión." />
+    <link rel="manifest" href="/manifest.json" />
+    <title>CR24 - Suministros Industriales Orión</title>
+  </head>
+  <body class="bg-slate-950 text-slate-100 antialiased font-sans selection:bg-blue-600 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
+  </body>
+</html>

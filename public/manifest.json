@@ -1,0 +1,15 @@
+{
+  "short_name": "CR24",
+  "name": "CR24 - Suministros Industriales Orión",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/GttJ57k1/FAB34803-3D79-40A2-B2DE-874DF03EAD98.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#020617"
+}
