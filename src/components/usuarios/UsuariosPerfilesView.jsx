@@ -88,7 +88,6 @@ export default function UsuariosPerfilesView({
     e.preventDefault();
     if (!profileNombre.trim()) return;
 
-    // If it's PRF-ADMIN, ensure administrative access stays true
     let finalPermissions = { ...permissionsMatrix };
     if (editingProfile && editingProfile.id === 'PRF-ADMIN') {
       finalPermissions.usuarios = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
@@ -111,7 +110,6 @@ export default function UsuariosPerfilesView({
   };
 
   const updateMatrixField = (moduleId, action, value) => {
-    // Prevent unchecking admin modules for PRF-ADMIN
     if (editingProfile?.id === 'PRF-ADMIN' && ['usuarios', 'perfiles', 'configuracion'].includes(moduleId)) {
       return;
     }
@@ -138,7 +136,7 @@ export default function UsuariosPerfilesView({
             <span>Gestión de Seguridad y Lista Blanca de Acceso</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Administración de usuarios autorizados (Email PK) y matriz de perfiles 100% configurables.
+            Administración de usuarios autorizados y matriz de perfiles de acceso.
           </p>
         </div>
 
@@ -187,7 +185,7 @@ export default function UsuariosPerfilesView({
           <table className="w-full text-left text-xs text-zinc-300">
             <thead className="bg-zinc-900/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
               <tr>
-                <th className="px-4 py-3">Correo (Llave Primaria)</th>
+                <th className="px-4 py-3">Correo Electrónico</th>
                 <th className="px-4 py-3">Nombre Completo</th>
                 <th className="px-4 py-3">Perfil Asignado</th>
                 <th className="px-4 py-3">Fecha Registro</th>
@@ -296,7 +294,7 @@ export default function UsuariosPerfilesView({
       >
         <form onSubmit={handleCreateUserSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Correo Electrónico (Llave Primaria)</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Correo Electrónico</label>
             <Input
               type="email"
               value={userEmail}
