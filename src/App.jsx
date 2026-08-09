@@ -119,8 +119,8 @@ export default function App() {
   };
 
   const handleDeleteLicitacion = (licId) => {
-    const updated = deleteItem('LICITACIONES', 'id', licId);
-    setLicitaciones(updated);
+    deleteItem('LICITACIONES', 'id', licId);
+    setLicitaciones(prev => prev.filter(l => String(l.id).trim() !== String(licId).trim()));
     if (selectedLicitacion && selectedLicitacion.id === licId) {
       setSelectedLicitacion(null);
     }
@@ -147,13 +147,14 @@ export default function App() {
 
   const handleDeleteDetalle = (detalleId) => {
     if (!detalleId) return;
-    const updatedDetalles = deleteItem('DETALLES', 'id', detalleId);
-    const updatedConsultas = deleteItem('CONSULTAS', 'detalleId', detalleId);
-    const updatedInvestigaciones = deleteItem('INVESTIGACIONES_IA', 'detalleId', detalleId);
+    const targetIdStr = String(detalleId).trim();
+    deleteItem('DETALLES', 'id', targetIdStr);
+    deleteItem('CONSULTAS', 'detalleId', targetIdStr);
+    deleteItem('INVESTIGACIONES_IA', 'detalleId', targetIdStr);
 
-    setDetalles(updatedDetalles);
-    setConsultas(updatedConsultas);
-    setInvestigacionesIa(updatedInvestigaciones);
+    setDetalles(prev => prev.filter(d => String(d.id || d.detalleId || '').trim() !== targetIdStr));
+    setConsultas(prev => prev.filter(c => String(c.detalleId || '').trim() !== targetIdStr));
+    setInvestigacionesIa(prev => prev.filter(i => String(i.detalleId || '').trim() !== targetIdStr));
   };
 
   const handleAddConsulta = (newConsulta) => {
@@ -172,8 +173,9 @@ export default function App() {
   };
 
   const handleDeleteAnexo = (anexoId) => {
-    const updated = deleteItem('ANEXOS', 'id', anexoId);
-    setAnexos(updated);
+    const targetIdStr = String(anexoId).trim();
+    deleteItem('ANEXOS', 'id', targetIdStr);
+    setAnexos(prev => prev.filter(a => String(a.id || '').trim() !== targetIdStr));
   };
 
   const handleAddNotaLicitacion = (newNota) => {
