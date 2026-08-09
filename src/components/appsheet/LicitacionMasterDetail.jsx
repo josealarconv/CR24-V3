@@ -28,7 +28,7 @@ import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink,
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
 import { investigarProductoConGemini } from '../../services/geminiService';
 import { deleteItem, updateItem, addItem } from '../../services/storageService';
-import { Button, Badge, Card, Modal, Input } from '../ui/Components';
+import { Button, Badge, Card, Modal, Input, EmptyState } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
 export default function LicitacionMasterDetail({
