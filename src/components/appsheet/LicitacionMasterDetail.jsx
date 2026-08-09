@@ -27,7 +27,7 @@ import {
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
 import { investigarProductoConGemini } from '../../services/geminiService';
-import { deleteItem } from '../../services/storageService';
+import { deleteItem, updateItem, addItem } from '../../services/storageService';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
@@ -350,19 +350,23 @@ export default function LicitacionMasterDetail({
     if (!prodDesc.trim()) return;
 
     if (editingDetalle) {
+      const updatedItem = {
+        ...editingDetalle,
+        descripcion: prodDesc.trim(),
+        cantidadRequerida: parseInt(prodCantReq) || 1,
+        cantidadACotizar: parseInt(prodCantReq) || 1,
+        condicionesEspeciales: prodCondiciones.trim(),
+        notas: prodNotas.trim(),
+        anexos: prodAnexos
+      };
+
       if (onEditDetalle) {
-        onEditDetalle({
-          ...editingDetalle,
-          descripcion: prodDesc.trim(),
-          cantidadRequerida: parseInt(prodCantReq) || 1,
-          cantidadACotizar: parseInt(prodCantReq) || 1,
-          condicionesEspeciales: prodCondiciones.trim(),
-          notas: prodNotas.trim(),
-          anexos: prodAnexos
-        });
+        onEditDetalle(updatedItem);
       }
+      updateItem('DETALLES', 'id', updatedItem.id, updatedItem);
+      window.dispatchEvent(new Event('storage-update'));
     } else {
-      onAddDetalle({
+      const newItem = {
         id: `DET-${Date.now()}`,
         licitacionId: licitacion.id,
         descripcion: prodDesc.trim(),
@@ -371,7 +375,13 @@ export default function LicitacionMasterDetail({
         condicionesEspeciales: prodCondiciones.trim(),
         notas: prodNotas.trim(),
         anexos: prodAnexos
-      });
+      };
+
+      if (onAddDetalle) {
+        onAddDetalle(newItem);
+      }
+      addItem('DETALLES', newItem);
+      window.dispatchEvent(new Event('storage-update'));
     }
 
     setShowProductoModal(false);

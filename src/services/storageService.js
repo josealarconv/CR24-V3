@@ -173,13 +173,17 @@ export function updateItem(key, param1, param2, param3) {
     idValue = param2;
     newFields = param3;
   } else if (typeof param1 === 'object' && param1 !== null) {
-    idValue = param1.id;
+    idValue = param1.id || param1.detalleId || param1.licitacionId;
     newFields = param1;
   }
 
-  const updated = current.map(item =>
-    item[idField] === idValue ? { ...item, ...newFields } : item
-  );
+  const targetStr = String(idValue || '').trim();
+
+  const updated = current.map(item => {
+    const itemVal = String(item[idField] || item.id || '').trim();
+    return itemVal === targetStr ? { ...item, ...newFields } : item;
+  });
+
   saveData(key, updated);
   return updated;
 }
