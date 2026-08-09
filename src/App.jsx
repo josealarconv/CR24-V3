@@ -365,6 +365,20 @@ export default function App() {
     setProveedores(updated.filter(p => p.workspaceId === wsId));
   };
 
+  const handleEditProveedor = (updatedProveedor) => {
+    if (!updatedProveedor) return;
+    const allData = getData('PROVEEDORES');
+    const updated = allData.map(p => p.id === updatedProveedor.id ? { ...p, ...updatedProveedor } : p);
+    saveData('PROVEEDORES', updated);
+    setProveedores(updated.filter(p => p.workspaceId === wsId));
+  };
+
+  const handleDeleteProveedor = (proveedorId) => {
+    if (!proveedorId) return;
+    deleteItem('PROVEEDORES', 'id', proveedorId);
+    setProveedores(prev => prev.filter(p => p.id !== proveedorId));
+  };
+
   const handleSaveConfig = (newConfig) => {
     // Save config into the active workspace
     if (activeWs) {
@@ -457,6 +471,7 @@ export default function App() {
               onAddCotizacionVersion={handleAddCotizacionVersion}
               onDeleteCotizacion={handleDeleteCotizacion}
               onUpdateEstatus={handleUpdateEstatusLicitacion}
+              onAddProveedor={handleAddProveedor}
             />
           ) : (
             <LicitacionesTableView
@@ -495,6 +510,8 @@ export default function App() {
             proveedores={proveedores}
             consultas={consultas}
             onAddProveedor={handleAddProveedor}
+            onEditProveedor={handleEditProveedor}
+            onDeleteProveedor={handleDeleteProveedor}
           />
         )}
 

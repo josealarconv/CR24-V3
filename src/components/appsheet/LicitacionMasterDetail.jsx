@@ -22,7 +22,9 @@ import {
   Printer,
   Trash2,
   Edit2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  UserPlus,
+  AlertTriangle
 } from 'lucide-react';
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
@@ -57,7 +59,8 @@ export default function LicitacionMasterDetail({
   onDeleteInvestigacionIa,
   onAddCotizacionVersion,
   onDeleteCotizacion,
-  onUpdateEstatus
+  onUpdateEstatus,
+  onAddProveedor
 }) {
   const [activeTab, setActiveTab] = useState('detalles'); // 'detalles' | 'consultas' | 'cotizacion' | 'anexos' | 'notas' | 'ia_history'
 
@@ -99,6 +102,14 @@ export default function LicitacionMasterDetail({
   const [deletingAnexoDetail, setDeletingAnexoDetail] = useState(null);
   const [deletingItemDetail, setDeletingItemDetail] = useState(null);
   const [actionFeedback, setActionFeedback] = useState(null);
+
+  // Consulta delete confirmation
+  const [deletingConsulta, setDeletingConsulta] = useState(null);
+
+  // Inline provider creation from consulta modal
+  const [showNewProveedorModal, setShowNewProveedorModal] = useState(false);
+  const [newProvNombre, setNewProvNombre] = useState('');
+  const [newProvRut, setNewProvRut] = useState('');
 
   const parseNumber = (val) => {
     if (val === null || val === undefined || val === '') return 0;
@@ -1047,7 +1058,7 @@ export default function LicitacionMasterDetail({
                                   {onDeleteConsulta && (
                                     <button
                                       type="button"
-                                      onClick={() => onDeleteConsulta(c.id)}
+                                      onClick={() => setDeletingConsulta(c)}
                                       className="p-1 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
                                       title="Eliminar cotización de este proveedor"
                                     >
@@ -1119,7 +1130,7 @@ export default function LicitacionMasterDetail({
                       {onDeleteConsulta && (
                         <button
                           type="button"
-                          onClick={() => onDeleteConsulta(c.id)}
+                          onClick={() => setDeletingConsulta(c)}
                           className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
                           title="Eliminar consulta de proveedor"
                         >
@@ -1601,7 +1612,7 @@ export default function LicitacionMasterDetail({
         title={editingConsulta ? `Editar Cotización de Proveedor` : `Asignar Cotización de Proveedor`}
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSaveConsultaSubmit} className="space-y-3 text-xs">
+        <form onSubmit={handleSaveConsultaSubmit} className="space-y-3 text-xs max-h-[75vh] overflow-y-auto pr-1">
           <p className="text-xs text-zinc-400 border-b border-zinc-800 pb-2">
             Ítem: <strong className="text-zinc-200">{selectedDetalle?.descripcion}</strong> (Req: {selectedDetalle?.cantidadRequerida || 1} u.)
           </p>
@@ -1609,16 +1620,32 @@ export default function LicitacionMasterDetail({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 mb-1">Proveedor Consultado *</label>
-              <select
-                value={selectedProveedorId}
-                onChange={(e) => setSelectedProveedorId(e.target.value)}
-                className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
-                required
-              >
-                {proveedores.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
-              </select>
+              <div className="flex items-center space-x-1.5">
+                <select
+                  value={selectedProveedorId}
+                  onChange={(e) => setSelectedProveedorId(e.target.value)}
+                  className="flex-1 p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+                  required
+                >
+                  {proveedores.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre} ({p.rut || p.id})</option>
+                  ))}
+                </select>
+                {onAddProveedor && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewProvNombre('');
+                      setNewProvRut('');
+                      setShowNewProveedorModal(true);
+                    }}
+                    className="p-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer shrink-0"
+                    title="Crear Proveedor Rápido"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div>
@@ -1831,6 +1858,111 @@ export default function LicitacionMasterDetail({
               <Trash2 className="w-3.5 h-3.5" />
               <span>Confirmar Eliminar</span>
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* DELETE CONSULTA CONFIRMATION MODAL */}
+      <Modal
+        isOpen={!!deletingConsulta}
+        onClose={() => setDeletingConsulta(null)}
+        title="Eliminar Consulta de Precio"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-3">
+          <div className="flex items-start space-x-2 p-3 bg-amber-950/40 border border-amber-800/60 rounded-lg text-xs text-amber-300">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p>¿Estás seguro de eliminar esta cotización de proveedor?</p>
+              {deletingConsulta && (
+                <p className="mt-1 text-zinc-400">
+                  Proveedor: <strong className="text-zinc-200">{proveedores.find(p => p.id === deletingConsulta.proveedorId)?.nombre || deletingConsulta.proveedorId}</strong>
+                  {deletingConsulta.subtotalCosto > 0 && (
+                    <> — Total: <strong className="text-zinc-200">${deletingConsulta.subtotalCosto?.toLocaleString('es-CL')}</strong></>  
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" onClick={() => setDeletingConsulta(null)}>
+              <X className="w-3.5 h-3.5" />
+              <span>Cancelar</span>
+            </Button>
+            <Button variant="danger" size="sm" onClick={() => {
+              if (deletingConsulta && onDeleteConsulta) {
+                onDeleteConsulta(deletingConsulta.id);
+              }
+              setDeletingConsulta(null);
+            }}>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Sí, Eliminar</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* QUICK PROVIDER CREATION MODAL */}
+      <Modal
+        isOpen={showNewProveedorModal}
+        onClose={() => setShowNewProveedorModal(false)}
+        title="Crear Proveedor Rápido"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-200 mb-1">
+              Nombre / Razón Social <span className="text-red-400 font-bold">*</span>
+            </label>
+            <Input
+              type="text"
+              value={newProvNombre}
+              onChange={(e) => setNewProvNombre(e.target.value)}
+              placeholder="Ej: Distribuidora Industrial SpA"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-zinc-200 mb-1">
+              RUT <span className="text-zinc-500 text-[10px]">(opcional)</span>
+            </label>
+            <Input
+              type="text"
+              value={newProvRut}
+              onChange={(e) => setNewProvRut(e.target.value)}
+              placeholder="Ej: 77.516.671-2"
+            />
+          </div>
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" onClick={() => setShowNewProveedorModal(false)}>
+              <X className="w-3.5 h-3.5" />
+              <span>Cancelar</span>
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                const nombre = newProvNombre.trim();
+                if (!nombre) return;
+                const newId = 'PRV-' + Date.now().toString(36).toUpperCase();
+                const newProv = {
+                  id: newId,
+                  nombre,
+                  rut: newProvRut.trim(),
+                  contacto: '',
+                  email: '',
+                  telefono: '',
+                  sitioWeb: '',
+                  condiciones: '',
+                  notas: ''
+                };
+                if (onAddProveedor) onAddProveedor(newProv);
+                setSelectedProveedorId(newId);
+                setShowNewProveedorModal(false);
+              }}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Crear y Seleccionar</span>
+            </Button>
           </div>
         </div>
       </Modal>
