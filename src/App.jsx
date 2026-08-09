@@ -109,6 +109,15 @@ export default function App() {
     setSelectedLicitacion(newLic);
   };
 
+  const handleEditLicitacion = (updatedLic) => {
+    const updated = licitaciones.map(l => l.id === updatedLic.id ? { ...l, ...updatedLic } : l);
+    saveData('LICITACIONES', updated);
+    setLicitaciones(updated);
+    if (selectedLicitacion && selectedLicitacion.id === updatedLic.id) {
+      setSelectedLicitacion(prev => ({ ...prev, ...updatedLic }));
+    }
+  };
+
   const handleUpdateEstatusLicitacion = (licId, newEstatus) => {
     const updated = licitaciones.map(l => l.id === licId ? { ...l, estatus: newEstatus } : l);
     saveData('LICITACIONES', updated);
@@ -264,12 +273,15 @@ export default function App() {
               licitaciones={filteredLicitaciones}
               clientes={clientes}
               detalles={detalles}
+              anexos={anexos}
               selectedMonth={selectedMonth}
               setSelectedMonth={setSelectedMonth}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
               onAddLicitacion={handleAddLicitacion}
+              onEditLicitacion={handleEditLicitacion}
+              onAddAnexo={handleAddAnexo}
             />
           )
         )}

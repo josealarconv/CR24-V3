@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search } from 'lucide-react';
+import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Paperclip, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { Button, Badge, Card, EmptyState, Modal, Input } from '../ui/Components';
 
 export default function LicitacionesTableView({
   licitaciones = [],
   clientes = [],
   detalles = [],
+  anexos = [],
   selectedMonth = '2026-08',
   setSelectedMonth,
   searchTerm = '',
   setSearchTerm,
   onSelectLicitacion,
-  onAddLicitacion
+  onAddLicitacion,
+  onEditLicitacion,
+  onAddAnexo
 }) {
   const [filterEstatus, setFilterEstatus] = useState('ALL');
-  const [showNewModal, setShowNewModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingLic, setEditingLic] = useState(null); // null = Creating, Obj = Editing
 
-  // Clean Month Stepper List (Months Only, No "Todos los Registros")
+  // Month Stepper List
   const monthsList = [
     { value: '2026-08', label: 'Agosto 2026' },
     { value: '2026-07', label: 'Julio 2026' },
@@ -39,13 +43,15 @@ export default function LicitacionesTableView({
     }
   };
 
-  // New Licitacion Form
+  // Form Fields
   const [numLic, setNumLic] = useState('');
   const [clienteId, setClienteId] = useState(clientes[0]?.id || '');
   const [moneda, setMoneda] = useState('CLP');
-  const [fecha, setFecha] = useState('2026-08-08');
-  const [fechaCot, setFechaCot] = useState('2026-08-15');
+  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaCot, setFechaCot] = useState('');
   const [notas, setNotas] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const getClienteNombre = (id) => {
     const cli = clientes.find(c => c.id === id);
@@ -72,26 +78,133 @@ export default function LicitacionesTableView({
     return true;
   });
 
-  const handleCreateSubmit = (e) => {
-    e.preventDefault();
-    if (!numLic.trim()) return;
-
-    onAddLicitacion({
-      id: `LIC-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-      numeroLicitacion: numLic,
-      fecha,
-      fechaCotizacion: fechaCot,
-      clienteId: clienteId || clientes[0]?.id,
-      moneda,
-      estatus: 'Abierto',
-      notas,
-      notasCotizacion: `Precios cotizados en ${moneda}. Despacho según acuerdo.`,
-      contador: 1
-    });
-
-    setShowNewModal(false);
+  const handleOpenCreateModal = () => {
+    setEditingLic(null);
     setNumLic('');
+    setClienteId(clientes[0]?.id || '');
+    setMoneda('CLP');
+    setFecha(new Date().toISOString().split('T')[0]);
+    setFechaCot('');
     setNotas('');
+    setAttachedFiles([]);
+    setErrorMsg('');
+    setShowModal(true);
+  };
+
+  const handleOpenEditModal = (e, lic) => {
+    e.stopPropagation(); // Prevents navigating to Detail view
+    setEditingLic(lic);
+    setNumLic(lic.numeroLicitacion || '');
+    setClienteId(lic.clienteId || clientes[0]?.id);
+    setMoneda(lic.moneda || 'CLP');
+    setFecha(lic.fecha || new Date().toISOString().split('T')[0]);
+    setFechaCot(lic.fechaCotizacion || '');
+    setNotas(lic.notas || '');
+    setAttachedFiles([]);
+    setErrorMsg('');
+    setShowModal(true);
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setAttachedFiles(prev => [
+          ...prev,
+          {
+            name: file.name,
+            size: (file.size / 1024).toFixed(1) + ' KB',
+            type: file.type,
+            dataUrl: event.target.result
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveAttachedFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (!clienteId) {
+      setErrorMsg('Debe seleccionar el Cliente Solicitante (*).');
+      return;
+    }
+    if (!fecha) {
+      setErrorMsg('Debe indicar la Fecha de Recepción (*).');
+      return;
+    }
+    if (!moneda) {
+      setErrorMsg('Debe seleccionar la Moneda de Cotización (*).');
+      return;
+    }
+
+    if (editingLic) {
+      // Editing existing Licitacion
+      const updatedData = {
+        id: editingLic.id,
+        numeroLicitacion: numLic.trim() || editingLic.id,
+        clienteId,
+        fecha,
+        fechaCotizacion: fechaCot || 'N/A',
+        moneda,
+        notas
+      };
+      onEditLicitacion(updatedData);
+
+      // Save attached files
+      if (attachedFiles.length && onAddAnexo) {
+        attachedFiles.forEach(f => {
+          onAddAnexo({
+            id: `ANX-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
+            licitacionId: editingLic.id,
+            nombre: f.name,
+            url: f.dataUrl,
+            tipo: f.type,
+            fecha: new Date().toISOString().split('T')[0]
+          });
+        });
+      }
+    } else {
+      // Creating new Licitacion
+      const generatedId = `LIC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newLic = {
+        id: generatedId,
+        numeroLicitacion: numLic.trim() ? numLic.trim() : generatedId,
+        fecha,
+        fechaCotizacion: fechaCot || 'N/A',
+        clienteId,
+        moneda,
+        estatus: 'Abierto',
+        notas,
+        notasCotizacion: `Precios cotizados en ${moneda}. Despacho según acuerdo.`,
+        contador: 1
+      };
+
+      onAddLicitacion(newLic);
+
+      // Save attached files
+      if (attachedFiles.length && onAddAnexo) {
+        attachedFiles.forEach(f => {
+          onAddAnexo({
+            id: `ANX-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
+            licitacionId: generatedId,
+            nombre: f.name,
+            url: f.dataUrl,
+            tipo: f.type,
+            fecha: new Date().toISOString().split('T')[0]
+          });
+        });
+      }
+    }
+
+    setShowModal(false);
   };
 
   const isSearchingGlobal = searchTerm.trim().length > 0;
@@ -124,7 +237,7 @@ export default function LicitacionesTableView({
             />
           </div>
 
-          {/* Contextual Month Navigation Controls (Clean Month Stepper Only) */}
+          {/* Contextual Month Navigation Controls */}
           <div className={`flex items-center space-x-1 bg-zinc-900 border ${isSearchingGlobal ? 'border-amber-800/60 bg-amber-950/20' : 'border-zinc-800'} rounded-lg p-0.5 text-xs text-zinc-300 transition-colors`}>
             <button
               type="button"
@@ -190,7 +303,7 @@ export default function LicitacionesTableView({
           </div>
 
           {/* Compact "Nuevo" Button on Far Right */}
-          <Button variant="primary" size="sm" className="px-3 py-1.5 text-xs shrink-0" onClick={() => setShowNewModal(true)}>
+          <Button variant="primary" size="sm" className="px-3 py-1.5 text-xs shrink-0" onClick={handleOpenCreateModal}>
             <Plus className="w-3.5 h-3.5" />
             <span>Nuevo</span>
           </Button>
@@ -215,7 +328,7 @@ export default function LicitacionesTableView({
                 <th className="px-4 py-3">Fecha Oferta</th>
                 <th className="px-4 py-3">Estatus</th>
                 <th className="px-4 py-3">Moneda</th>
-                <th className="px-4 py-3 text-right">Acción</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60 font-mono">
@@ -247,9 +360,20 @@ export default function LicitacionesTableView({
                     {lic.moneda || 'CLP'}
                   </td>
                   <td className="px-4 py-3 text-right font-sans">
-                    <Button variant="ghost" size="xs">
-                      <span>Ver Ficha</span>
-                    </Button>
+                    <div className="flex items-center justify-end space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEditModal(e, lic)}
+                        className="p-1 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-950/40 transition-colors cursor-pointer"
+                        title="Editar Licitación"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      <Button variant="ghost" size="xs" onClick={() => onSelectLicitacion(lic)}>
+                        <span>Ver Ficha</span>
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -258,48 +382,89 @@ export default function LicitacionesTableView({
         </div>
       )}
 
-      {/* Modal Nueva Licitación */}
+      {/* Modal Crear / Editar Licitación con Adjuntos y Validación Estricta */}
       <Modal
-        isOpen={showNewModal}
-        onClose={() => setShowNewModal(false)}
-        title="Registrar Nueva Licitación"
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingLic ? `Editar Licitación (${editingLic.numeroLicitacion || editingLic.id})` : "Registrar Nueva Licitación"}
       >
-        <form onSubmit={handleCreateSubmit} className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Número de Licitación / ID *</label>
-            <Input
-              type="text"
-              value={numLic}
-              onChange={(e) => setNumLic(e.target.value)}
-              placeholder="Ej: LIC-2026-CDK-0899"
-              required
-            />
-          </div>
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          {errorMsg && (
+            <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-lg text-xs text-red-300 font-medium flex items-center space-x-2">
+              <span className="text-red-400 font-bold">⚠️</span>
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
+          {/* Cliente Solicitante (*) - Obligatorio */}
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Cliente Solicitante *</label>
+            <label className="block text-xs font-semibold text-zinc-200 mb-1">
+              Cliente Solicitante <span className="text-red-400 font-bold">*</span>
+            </label>
             <select
               value={clienteId}
               onChange={(e) => setClienteId(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+              required
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-blue-500 font-sans"
             >
+              <option value="" disabled>Seleccione un cliente...</option>
               {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
+                <option key={c.id} value={c.id}>{c.nombre} ({c.rut})</option>
               ))}
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            {/* Fecha Recepción (*) - Obligatorio */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Fecha Recepción</label>
+              <label className="block text-xs font-semibold text-zinc-200 mb-1">
+                Fecha Recepción <span className="text-red-400 font-bold">*</span>
+              </label>
               <Input
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
+                required
               />
             </div>
+
+            {/* Moneda de Cotización (*) - Obligatorio */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Fecha Límite Cotización</label>
+              <label className="block text-xs font-semibold text-zinc-200 mb-1">
+                Moneda de Cotización <span className="text-red-400 font-bold">*</span>
+              </label>
+              <select
+                value={moneda}
+                onChange={(e) => setMoneda(e.target.value)}
+                required
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-blue-500 font-sans"
+              >
+                <option value="CLP">Pesos Chilenos (CLP)</option>
+                <option value="USD">Dólares (USD)</option>
+                <option value="UF">Unidades de Fomento (UF)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Número de Licitación / ID - Opcional */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">
+                No. Licitación / Ref. <span className="text-zinc-500 text-[10px]">(Opcional)</span>
+              </label>
+              <Input
+                type="text"
+                value={numLic}
+                onChange={(e) => setNumLic(e.target.value)}
+                placeholder="Ej: LIC-2026-CDK-0899"
+              />
+            </div>
+
+            {/* Fecha Límite Cotización - Opcional */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">
+                Fecha Límite Oferta <span className="text-zinc-500 text-[10px]">(Opcional)</span>
+              </label>
               <Input
                 type="date"
                 value={fechaCot}
@@ -308,35 +473,80 @@ export default function LicitacionesTableView({
             </div>
           </div>
 
+          {/* Observaciones / Notas - Opcional */}
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Moneda de Cotización</label>
-            <select
-              value={moneda}
-              onChange={(e) => setMoneda(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
-            >
-              <option value="CLP">Pesos Chilenos (CLP)</option>
-              <option value="USD">Dólares (USD)</option>
-              <option value="UF">Unidades de Fomento (UF)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Observaciones / Descripción</label>
-            <Input
-              type="text"
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Observaciones / Requerimiento <span className="text-zinc-500 text-[10px]">(Opcional)</span>
+            </label>
+            <textarea
+              rows={2}
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Detalle rápido de la licitación..."
+              placeholder="Detalles técnicos, condiciones de entrega o notas generales..."
+              className="w-full p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-sans"
             />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setShowNewModal(false)}>
+          {/* Carga y Adjunto de Archivos y Fotografías (Opcional) */}
+          <div className="border border-zinc-800/80 rounded-xl p-3 bg-zinc-950/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-blue-400" />
+                <span>Adjuntar Archivos y Fotografías</span>
+                <span className="text-zinc-500 text-[10px] font-normal">(Opcional)</span>
+              </label>
+
+              <label className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium cursor-pointer transition-colors flex items-center space-x-1">
+                <Upload className="w-3 h-3 text-blue-400" />
+                <span>Examinar</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {attachedFiles.length > 0 ? (
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+                {attachedFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+                    <div className="flex items-center space-x-2 truncate">
+                      {file.type.startsWith('image/') ? (
+                        <ImageIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : (
+                        <Paperclip className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      )}
+                      <span className="text-zinc-200 font-medium truncate">{file.name}</span>
+                      <span className="text-zinc-500 text-[10px] font-mono">({file.size})</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachedFile(idx)}
+                      className="p-1 text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded transition-colors"
+                      title="Quitar archivo"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-zinc-500 italic">
+                Bases técnicas, PDFs o fotografías adjuntas a esta licitación.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" type="submit">
-              Crear Licitación
+              {editingLic ? "Guardar Cambios" : "Crear Licitación"}
             </Button>
           </div>
         </form>
