@@ -94,6 +94,7 @@ export default function LicitacionMasterDetail({
   const [viewingAnexoDetail, setViewingAnexoDetail] = useState(null);
   const [deletingAnexoDetail, setDeletingAnexoDetail] = useState(null);
   const [deletingItemDetail, setDeletingItemDetail] = useState(null);
+  const [actionFeedback, setActionFeedback] = useState(null);
 
   const parseNumber = (val) => {
     if (val === null || val === undefined || val === '') return 0;
@@ -150,17 +151,28 @@ export default function LicitacionMasterDetail({
   };
 
   const handleConfirmDeleteItem = () => {
-    const targetId = deletingItemDetail?.item?.id || deletingItemDetail?.item?.detalleId || deletingItemDetail?.id;
-    if (targetId) {
-      if (onDeleteDetalle) {
-        onDeleteDetalle(targetId);
+    const itemObj = deletingItemDetail?.item || deletingItemDetail;
+    const targetId = itemObj?.id || itemObj?.detalleId;
+    const itemDesc = itemObj?.descripcion || 'seleccionado';
+
+    try {
+      if (targetId) {
+        if (onDeleteDetalle) {
+          onDeleteDetalle(targetId);
+        }
+        deleteItem('DETALLES', 'id', targetId);
+        deleteItem('CONSULTAS', 'detalleId', targetId);
+        deleteItem('INVESTIGACIONES_IA', 'detalleId', targetId);
+        window.dispatchEvent(new Event('storage-update'));
+        setActionFeedback(`Producto "${itemDesc}" eliminado correctamente.`);
       }
-      deleteItem('DETALLES', 'id', targetId);
-      deleteItem('CONSULTAS', 'detalleId', targetId);
-      deleteItem('INVESTIGACIONES_IA', 'detalleId', targetId);
-      window.dispatchEvent(new Event('storage-update'));
+    } catch (err) {
+      console.error('Error al eliminar producto:', err);
+      setActionFeedback(`Error al eliminar producto: ${err.message}`);
+    } finally {
+      setDeletingItemDetail(null);
+      setTimeout(() => setActionFeedback(null), 4000);
     }
-    setDeletingItemDetail(null);
   };
 
   // Helper calculation for supplier quote with multi-currency exchange rates and margins
@@ -349,42 +361,50 @@ export default function LicitacionMasterDetail({
     e.preventDefault();
     if (!prodDesc.trim()) return;
 
-    if (editingDetalle) {
-      const updatedItem = {
-        ...editingDetalle,
-        descripcion: prodDesc.trim(),
-        cantidadRequerida: parseInt(prodCantReq) || 1,
-        cantidadACotizar: parseInt(prodCantReq) || 1,
-        condicionesEspeciales: prodCondiciones.trim(),
-        notas: prodNotas.trim(),
-        anexos: prodAnexos
-      };
+    try {
+      if (editingDetalle) {
+        const updatedItem = {
+          ...editingDetalle,
+          descripcion: prodDesc.trim(),
+          cantidadRequerida: parseInt(prodCantReq) || 1,
+          cantidadACotizar: parseInt(prodCantReq) || 1,
+          condicionesEspeciales: prodCondiciones.trim(),
+          notas: prodNotas.trim(),
+          anexos: prodAnexos
+        };
 
-      if (onEditDetalle) {
-        onEditDetalle(updatedItem);
-      }
-      updateItem('DETALLES', 'id', updatedItem.id, updatedItem);
-      window.dispatchEvent(new Event('storage-update'));
-    } else {
-      const newItem = {
-        id: `DET-${Date.now()}`,
-        licitacionId: licitacion.id,
-        descripcion: prodDesc.trim(),
-        cantidadRequerida: parseInt(prodCantReq) || 1,
-        cantidadACotizar: parseInt(prodCantReq) || 1,
-        condicionesEspeciales: prodCondiciones.trim(),
-        notas: prodNotas.trim(),
-        anexos: prodAnexos
-      };
+        if (onEditDetalle) {
+          onEditDetalle(updatedItem);
+        }
+        updateItem('DETALLES', 'id', updatedItem.id, updatedItem);
+        window.dispatchEvent(new Event('storage-update'));
+        setActionFeedback(`Producto "${prodDesc.trim()}" actualizado correctamente.`);
+      } else {
+        const newItem = {
+          id: `DET-${Date.now()}`,
+          licitacionId: licitacion.id,
+          descripcion: prodDesc.trim(),
+          cantidadRequerida: parseInt(prodCantReq) || 1,
+          cantidadACotizar: parseInt(prodCantReq) || 1,
+          condicionesEspeciales: prodCondiciones.trim(),
+          notas: prodNotas.trim(),
+          anexos: prodAnexos
+        };
 
-      if (onAddDetalle) {
-        onAddDetalle(newItem);
+        if (onAddDetalle) {
+          onAddDetalle(newItem);
+        }
+        addItem('DETALLES', newItem);
+        window.dispatchEvent(new Event('storage-update'));
+        setActionFeedback(`Producto "${prodDesc.trim()}" creado correctamente.`);
       }
-      addItem('DETALLES', newItem);
-      window.dispatchEvent(new Event('storage-update'));
+    } catch (err) {
+      console.error('Error al guardar producto:', err);
+      setActionFeedback(`Error al guardar producto: ${err.message}`);
+    } finally {
+      setShowProductoModal(false);
+      setTimeout(() => setActionFeedback(null), 4000);
     }
-
-    setShowProductoModal(false);
   };
 
   // --- Supplier Quote Modal Handlers ---
@@ -622,6 +642,13 @@ export default function LicitacionMasterDetail({
 
   return (
     <div className="space-y-5 pb-12 w-full">
+      {actionFeedback && (
+        <div className="p-3 bg-blue-950/90 border border-blue-800 text-blue-200 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xl animate-in fade-in">
+          <span>{actionFeedback}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-blue-400 hover:text-white font-bold ml-2">✕</button>
+        </div>
+      )}
+
       {/* Master Licitacion Header Card (100% Screen Width) */}
       <div className="bg-zinc-900/80 p-5 rounded-xl border border-zinc-800/80 space-y-4 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
