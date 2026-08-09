@@ -450,7 +450,7 @@ export default function LicitacionesTableView({
               >
                 <option value="" disabled>Seleccione un cliente...</option>
                 {clientes.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre} ({c.rut})</option>
+                  <option key={c.id} value={c.id}>{c.nombre} ({c.rut || c.id})</option>
                 ))}
               </select>
               {onAddCliente && (
@@ -704,7 +704,7 @@ export default function LicitacionesTableView({
           </div>
           <div>
             <label className="block text-xs font-semibold text-zinc-200 mb-1">
-              RUT <span className="text-red-400 font-bold">*</span>
+              RUT <span className="text-zinc-500 text-[10px]">(opcional)</span>
             </label>
             <Input
               type="text"
@@ -736,12 +736,8 @@ export default function LicitacionesTableView({
                   setNewClienteError('El nombre del cliente es obligatorio.');
                   return;
                 }
-                if (!rut) {
-                  setNewClienteError('El RUT del cliente es obligatorio.');
-                  return;
-                }
-                // Check duplicates
-                if (clientes.some(c => c.rut.toLowerCase() === rut.toLowerCase())) {
+                // Check RUT duplicates only if provided
+                if (rut && clientes.some(c => c.rut && c.rut.toLowerCase() === rut.toLowerCase())) {
                   setNewClienteError('Ya existe un cliente con ese RUT.');
                   return;
                 }

@@ -346,6 +346,20 @@ export default function App() {
     setClientes(updated.filter(c => c.workspaceId === wsId));
   };
 
+  const handleEditCliente = (updatedCliente) => {
+    if (!updatedCliente) return;
+    const allData = getData('CLIENTES');
+    const updated = allData.map(c => c.id === updatedCliente.id ? { ...c, ...updatedCliente } : c);
+    saveData('CLIENTES', updated);
+    setClientes(updated.filter(c => c.workspaceId === wsId));
+  };
+
+  const handleDeleteCliente = (clienteId) => {
+    if (!clienteId) return;
+    deleteItem('CLIENTES', 'id', clienteId);
+    setClientes(prev => prev.filter(c => c.id !== clienteId));
+  };
+
   const handleAddProveedor = (newPrv) => {
     const updated = addItem('PROVEEDORES', { ...newPrv, workspaceId: wsId });
     setProveedores(updated.filter(p => p.workspaceId === wsId));
@@ -471,6 +485,8 @@ export default function App() {
             clientes={clientes}
             licitaciones={licitaciones}
             onAddCliente={handleAddCliente}
+            onEditCliente={handleEditCliente}
+            onDeleteCliente={handleDeleteCliente}
           />
         )}
 
