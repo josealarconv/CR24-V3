@@ -21,6 +21,7 @@ import {
   Eye,
   Printer,
   Trash2,
+  Edit2,
   Image as ImageIcon
 } from 'lucide-react';
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
@@ -42,7 +43,9 @@ export default function LicitacionMasterDetail({
   currentUser,
   onBack,
   onAddDetalle,
+  onEditDetalle,
   onAddConsulta,
+  onEditConsulta,
   onAddAnexo,
   onDeleteAnexo,
   onAddNotaLicitacion,
@@ -52,28 +55,39 @@ export default function LicitacionMasterDetail({
 }) {
   const [activeTab, setActiveTab] = useState('detalles'); // 'detalles' | 'consultas' | 'cotizacion' | 'anexos' | 'notas' | 'ia_history'
 
-  // New Line Item Form State
-  const [newDesc, setNewDesc] = useState('');
-  const [newCantReq, setNewCantReq] = useState(1);
-  const [newNotasItem, setNewNotasItem] = useState('');
+  // Product Modal State (Create / Edit Item)
+  const [showProductoModal, setShowProductoModal] = useState(false);
+  const [editingDetalle, setEditingDetalle] = useState(null);
+  const [prodDesc, setProdDesc] = useState('');
+  const [prodCantReq, setProdCantReq] = useState(1);
+  const [prodCondiciones, setProdCondiciones] = useState('');
+  const [prodNotas, setProdNotas] = useState('');
+  const [prodAnexos, setProdAnexos] = useState([]);
+  const [uploadingItemFile, setUploadingItemFile] = useState(false);
 
-  // New Price Inquiry State (Costing Structure)
+  // Price Inquiry Quote Modal State (Create / Edit Supplier Quote)
   const [showConsultaModal, setShowConsultaModal] = useState(false);
+  const [editingConsulta, setEditingConsulta] = useState(null);
   const [selectedDetalle, setSelectedDetalle] = useState(null);
   const [selectedProveedorId, setSelectedProveedorId] = useState('');
+  const [cantCotizadaInput, setCantCotizadaInput] = useState(1);
   const [cantADespacharInput, setCantADespacharInput] = useState(1);
+  const [monedaProveedorInput, setMonedaProveedorInput] = useState('CLP');
+  const [tasaCambioInput, setTasaCambioInput] = useState(950);
   const [precioBaseInput, setPrecioBaseInput] = useState('');
   const [costoFleteInput, setCostoFleteInput] = useState('0');
   const [costoInternacionInput, setCostoInternacionInput] = useState('0');
   const [costoAfexInput, setCostoAfexInput] = useState('0');
+  const [porcentajeImpuestoInput, setPorcentajeImpuestoInput] = useState('0');
+  const [porcentajeMargenInput, setPorcentajeMargenInput] = useState('25');
 
-  // New Note State
+  // Follow-up Notes State
   const [newNotaText, setNewNotaText] = useState('');
 
   // Gemini Research Loading State
   const [loadingAiDetalleId, setLoadingAiDetalleId] = useState(null);
 
-  // File Upload State
+  // Global File Upload & Viewer State
   const [uploading, setUploading] = useState(false);
   const [viewingAnexoDetail, setViewingAnexoDetail] = useState(null);
   const [deletingAnexoDetail, setDeletingAnexoDetail] = useState(null);
@@ -125,6 +139,52 @@ export default function LicitacionMasterDetail({
     setDeletingAnexoDetail(null);
   };
 
+  // Helper calculation for supplier quote with multi-currency exchange rates and margins
+  const computeQuoteCosts = ({
+    licitacionMoneda = 'CLP',
+    monedaProveedor = 'CLP',
+    tasaCambio = 950,
+    precioBase = 0,
+    costoFlete = 0,
+    costoInternacion = 0,
+    costoAfex = 0,
+    porcentajeImpuesto = 0,
+    porcentajeMargen = 25,
+    cantidadADespachar = 1
+  }) => {
+    let factor = 1;
+    const rate = parseFloat(tasaCambio) || 950;
+    if (licitacionMoneda === 'CLP' && monedaProveedor === 'USD') {
+      factor = rate;
+    } else if (licitacionMoneda === 'USD' && monedaProveedor === 'CLP') {
+      factor = 1 / rate;
+    }
+
+    const baseLicit = (parseFloat(precioBase) || 0) * factor;
+    const fleteLicit = (parseFloat(costoFlete) || 0) * factor;
+    const internacionLicit = (parseFloat(costoInternacion) || 0) * factor;
+    const afexLicit = (parseFloat(costoAfex) || 0) * factor;
+    const impPct = parseFloat(porcentajeImpuesto) || 0;
+    const mgnPct = parseFloat(porcentajeMargen) || 0;
+
+    const impuestoMonto = baseLicit * (impPct / 100);
+    const costoUnitarioCompuesto = baseLicit + fleteLicit + internacionLicit + afexLicit + impuestoMonto;
+    const precioVentaUnitario = costoUnitarioCompuesto * (1 + (mgnPct / 100));
+    const qty = parseInt(cantidadADespachar) || 1;
+    const subtotalCosto = costoUnitarioCompuesto * qty;
+    const subtotalVenta = precioVentaUnitario * qty;
+
+    return {
+      conversionFactor: factor,
+      baseLicit,
+      impuestoMonto,
+      costoUnitarioCompuesto,
+      precioVentaUnitario,
+      subtotalCosto,
+      subtotalVenta
+    };
+  };
+
   // Status Enum Options
   const estatusList = [
     'Abierto',
@@ -153,50 +213,182 @@ export default function LicitacionMasterDetail({
     return `CLP $${Math.round(num).toLocaleString('es-CL')}`;
   };
 
-  // Compute Multi-Supplier Weighted Cost for a Detalle Item
+  // Compute Multi-Supplier Costing & Pricing for a Detalle Item
   const computeItemCosting = (detalleId) => {
     const itemConsultas = consultas.filter(c => c.detalleId === detalleId && c.estado === 'Aceptada');
     if (itemConsultas.length === 0) {
-      return { totalQtyDespachable: 0, totalCostoCompuesto: 0, costoPromedioPonderado: 0 };
+      return { totalQtyDespachable: 0, totalCostoCompuesto: 0, totalVentaCompuesto: 0, costoPromedioPonderado: 0, ventaPromedioPonderado: 0 };
     }
 
     const totalQtyDespachable = itemConsultas.reduce((acc, c) => acc + (c.cantidadADespachar || 0), 0);
-    const totalCostoCompuesto = itemConsultas.reduce((acc, c) => acc + (c.subtotalCosto || 0), 0);
-    const costoPromedioPonderado = totalQtyDespachable > 0 ? totalCostoCompuesto / totalQtyDespachable : 0;
+    
+    // Sum composites using stored values or dynamic calculation
+    let totalCostoCompuesto = 0;
+    let totalVentaCompuesto = 0;
 
-    return { totalQtyDespachable, totalCostoCompuesto, costoPromedioPonderado };
+    itemConsultas.forEach(c => {
+      if (c.subtotalVenta !== undefined && c.subtotalCosto !== undefined) {
+        totalCostoCompuesto += c.subtotalCosto;
+        totalVentaCompuesto += c.subtotalVenta;
+      } else {
+        const computed = computeQuoteCosts({
+          licitacionMoneda: licitacion.moneda,
+          monedaProveedor: c.monedaProveedor || licitacion.moneda,
+          tasaCambio: c.tasaCambio || 950,
+          precioBase: c.precioBase,
+          costoFlete: c.costoFlete,
+          costoInternacion: c.costoInternacion,
+          costoAfex: c.costoAfex,
+          porcentajeImpuesto: c.porcentajeImpuesto,
+          porcentajeMargen: c.porcentajeMargen !== undefined ? c.porcentajeMargen : 25,
+          cantidadADespachar: c.cantidadADespachar
+        });
+        totalCostoCompuesto += computed.subtotalCosto;
+        totalVentaCompuesto += computed.subtotalVenta;
+      }
+    });
+
+    const costoPromedioPonderado = totalQtyDespachable > 0 ? totalCostoCompuesto / totalQtyDespachable : 0;
+    const ventaPromedioPonderado = totalQtyDespachable > 0 ? totalVentaCompuesto / totalQtyDespachable : 0;
+
+    return { totalQtyDespachable, totalCostoCompuesto, totalVentaCompuesto, costoPromedioPonderado, ventaPromedioPonderado };
   };
 
-  // Grand Total Calculations across all items
+  // Grand Total Cost & Sales Calculations across all items
   const grandTotalCost = detalles.reduce((acc, det) => {
     const { totalCostoCompuesto } = computeItemCosting(det.id);
     return acc + totalCostoCompuesto;
   }, 0);
 
-  // Assuming 25% default margin over total composite cost
-  const subtotalCotizado = Math.round(grandTotalCost * 1.25);
-  const ivaTotal = licitacion.moneda === 'CLP' ? Math.round(subtotalCotizado * 0.19) : 0; // IVA usually applies to domestic CLP
+  const grandTotalVenta = detalles.reduce((acc, det) => {
+    const { totalVentaCompuesto, totalCostoCompuesto } = computeItemCosting(det.id);
+    // If supplier quotes are assigned, use totalVentaCompuesto; otherwise default 25% margin over cost
+    return acc + (totalVentaCompuesto > 0 ? totalVentaCompuesto : Math.round(totalCostoCompuesto * 1.25));
+  }, 0);
+
+  const subtotalCotizado = grandTotalVenta > 0 ? grandTotalVenta : Math.round(grandTotalCost * 1.25);
+  const ivaTotal = licitacion.moneda === 'CLP' ? Math.round(subtotalCotizado * 0.19) : 0;
   const totalCotizacion = subtotalCotizado + ivaTotal;
 
-  const handleCreateDetalle = (e) => {
-    e.preventDefault();
-    if (!newDesc.trim()) return;
-
-    onAddDetalle({
-      id: `DET-${Date.now().toString().slice(-4)}`,
-      licitacionId: licitacion.id,
-      descripcion: newDesc.trim(),
-      cantidadRequerida: parseInt(newCantReq) || 1,
-      cantidadACotizar: parseInt(newCantReq) || 1,
-      notas: newNotasItem.trim()
-    });
-
-    setNewDesc('');
-    setNewCantReq(1);
-    setNewNotasItem('');
+  // --- Product Modal Open Handlers ---
+  const handleOpenCreateProducto = () => {
+    setEditingDetalle(null);
+    setProdDesc('');
+    setProdCantReq(1);
+    setProdCondiciones('');
+    setProdNotas('');
+    setProdAnexos([]);
+    setShowProductoModal(true);
   };
 
-  const handleCreateConsulta = (e) => {
+  const handleOpenEditProducto = (item) => {
+    setEditingDetalle(item);
+    setProdDesc(item.descripcion || '');
+    setProdCantReq(item.cantidadRequerida || 1);
+    setProdCondiciones(item.condicionesEspeciales || '');
+    setProdNotas(item.notas || '');
+    setProdAnexos(item.anexos || []);
+    setShowProductoModal(true);
+  };
+
+  const handleItemFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingItemFile(true);
+
+    try {
+      const newAnxList = [];
+      for (const file of files) {
+        const url = await uploadFileToStorage(file, `detalles/${licitacion.id}`);
+        newAnxList.push({
+          id: `ANX-DET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          nombre: file.name,
+          url,
+          fecha: new Date().toISOString().split('T')[0],
+          tipo: file.type || 'Documento/Imagen',
+          size: Math.round(file.size / 1024)
+        });
+      }
+      setProdAnexos(prev => [...prev, ...newAnxList]);
+    } catch (err) {
+      console.error('Error al subir anexo del producto:', err);
+    } finally {
+      setUploadingItemFile(false);
+    }
+  };
+
+  const handleRemoveItemAnexo = (anxId) => {
+    setProdAnexos(prev => prev.filter(a => a.id !== anxId));
+  };
+
+  const handleSaveProductoSubmit = (e) => {
+    e.preventDefault();
+    if (!prodDesc.trim()) return;
+
+    if (editingDetalle) {
+      if (onEditDetalle) {
+        onEditDetalle({
+          ...editingDetalle,
+          descripcion: prodDesc.trim(),
+          cantidadRequerida: parseInt(prodCantReq) || 1,
+          cantidadACotizar: parseInt(prodCantReq) || 1,
+          condicionesEspeciales: prodCondiciones.trim(),
+          notas: prodNotas.trim(),
+          anexos: prodAnexos
+        });
+      }
+    } else {
+      onAddDetalle({
+        id: `DET-${Date.now().toString().slice(-4)}`,
+        licitacionId: licitacion.id,
+        descripcion: prodDesc.trim(),
+        cantidadRequerida: parseInt(prodCantReq) || 1,
+        cantidadACotizar: parseInt(prodCantReq) || 1,
+        condicionesEspeciales: prodCondiciones.trim(),
+        notas: prodNotas.trim(),
+        anexos: prodAnexos
+      });
+    }
+
+    setShowProductoModal(false);
+  };
+
+  // --- Supplier Quote Modal Handlers ---
+  const handleOpenCreateConsulta = (item) => {
+    setSelectedDetalle(item);
+    setEditingConsulta(null);
+    setSelectedProveedorId(proveedores[0]?.id || '');
+    setCantCotizadaInput(item.cantidadRequerida || 1);
+    setCantADespacharInput(item.cantidadRequerida || 1);
+    setMonedaProveedorInput(licitacion.moneda || 'CLP');
+    setTasaCambioInput(950);
+    setPrecioBaseInput('');
+    setCostoFleteInput('0');
+    setCostoInternacionInput('0');
+    setCostoAfexInput('0');
+    setPorcentajeImpuestoInput('0');
+    setPorcentajeMargenInput('25');
+    setShowConsultaModal(true);
+  };
+
+  const handleOpenEditConsulta = (cns, item) => {
+    setSelectedDetalle(item);
+    setEditingConsulta(cns);
+    setSelectedProveedorId(cns.proveedorId);
+    setCantCotizadaInput(cns.cantidadCotizada || cns.cantidadADespachar || 1);
+    setCantADespacharInput(cns.cantidadADespachar || 1);
+    setMonedaProveedorInput(cns.monedaProveedor || licitacion.moneda || 'CLP');
+    setTasaCambioInput(cns.tasaCambio || 950);
+    setPrecioBaseInput(cns.precioBase || '');
+    setCostoFleteInput(cns.costoFlete || 0);
+    setCostoInternacionInput(cns.costoInternacion || 0);
+    setCostoAfexInput(cns.costoAfex || 0);
+    setPorcentajeImpuestoInput(cns.porcentajeImpuesto || 0);
+    setPorcentajeMargenInput(cns.porcentajeMargen !== undefined ? cns.porcentajeMargen : 25);
+    setShowConsultaModal(true);
+  };
+
+  const handleSaveConsultaSubmit = (e) => {
     e.preventDefault();
     if (!selectedDetalle || !selectedProveedorId || !precioBaseInput) return;
 
@@ -204,31 +396,54 @@ export default function LicitacionMasterDetail({
     const flete = parseFloat(costoFleteInput) || 0;
     const internacion = parseFloat(costoInternacionInput) || 0;
     const afex = parseFloat(costoAfexInput) || 0;
-    const qty = parseInt(cantADespacharInput) || 1;
+    const impPct = parseFloat(porcentajeImpuestoInput) || 0;
+    const mgnPct = parseFloat(porcentajeMargenInput) || 0;
+    const qtyDesp = parseInt(cantADespacharInput) || 1;
+    const qtyCot = parseInt(cantCotizadaInput) || qtyDesp;
+    const tasa = parseFloat(tasaCambioInput) || 950;
 
-    const costoUnitarioCompuesto = base + flete + internacion + afex;
-    const subtotalCosto = qty * costoUnitarioCompuesto;
-
-    onAddConsulta({
-      id: `CNS-${Date.now().toString().slice(-4)}`,
-      detalleId: selectedDetalle.id,
-      proveedorId: selectedProveedorId,
-      cantidadADespachar: qty,
+    const computed = computeQuoteCosts({
+      licitacionMoneda: licitacion.moneda,
+      monedaProveedor: monedaProveedorInput,
+      tasaCambio: tasa,
       precioBase: base,
       costoFlete: flete,
       costoInternacion: internacion,
       costoAfex: afex,
-      costoUnitarioCompuesto,
-      subtotalCosto,
-      fecha: new Date().toISOString().split('T')[0],
-      estado: 'Aceptada'
+      porcentajeImpuesto: impPct,
+      porcentajeMargen: mgnPct,
+      cantidadADespachar: qtyDesp
     });
 
+    const payload = {
+      id: editingConsulta ? editingConsulta.id : `CNS-${Date.now().toString().slice(-4)}`,
+      detalleId: selectedDetalle.id,
+      proveedorId: selectedProveedorId,
+      cantidadCotizada: qtyCot,
+      cantidadADespachar: qtyDesp,
+      monedaProveedor: monedaProveedorInput,
+      tasaCambio: tasa,
+      precioBase: base,
+      costoFlete: flete,
+      costoInternacion: internacion,
+      costoAfex: afex,
+      porcentajeImpuesto: impPct,
+      porcentajeMargen: mgnPct,
+      costoUnitarioCompuesto: computed.costoUnitarioCompuesto,
+      precioVentaUnitario: computed.precioVentaUnitario,
+      subtotalCosto: computed.subtotalCosto,
+      subtotalVenta: computed.subtotalVenta,
+      fecha: editingConsulta ? editingConsulta.fecha : new Date().toISOString().split('T')[0],
+      estado: 'Aceptada'
+    };
+
+    if (editingConsulta) {
+      if (onEditConsulta) onEditConsulta(payload);
+    } else {
+      onAddConsulta(payload);
+    }
+
     setShowConsultaModal(false);
-    setPrecioBaseInput('');
-    setCostoFleteInput('0');
-    setCostoInternacionInput('0');
-    setCostoAfexInput('0');
   };
 
   const handleAddNotaSubmit = (e) => {
@@ -249,85 +464,127 @@ export default function LicitacionMasterDetail({
     setNewNotaText('');
   };
 
-  // Gemini Research protocol with AI history (does not overwrite previous entries)
-  const handleTriggerAiResearch = async (detalle) => {
-    setLoadingAiDetalleId(detalle.id);
-    const res = await investigarProductoConGemini(detalle.descripcion, detalle.notas);
-    setLoadingAiDetalleId(null);
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
 
-    if (res.success) {
+    try {
+      const url = await uploadFileToStorage(file, `licitaciones/${licitacion.id}`);
+      onAddAnexo({
+        id: `ANX-${Date.now().toString().slice(-4)}`,
+        licitacionId: licitacion.id,
+        nombre: file.name,
+        url,
+        fecha: new Date().toISOString().split('T')[0],
+        tipo: file.type || 'Documento/Imagen'
+      });
+    } catch (err) {
+      console.error('Error al subir archivo:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleTriggerAiResearch = async (detalleItem) => {
+    setLoadingAiDetalleId(detalleItem.id);
+    try {
+      const resultJSON = await investigarProductoConGemini(detalleItem.descripcion, licitacion.moneda);
       const now = new Date();
       const dateStr = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
 
       onAddInvestigacionIa({
         id: `INV-${Date.now().toString().slice(-4)}`,
-        detalleId: detalle.id,
+        detalleId: detalleItem.id,
         fechaHora: dateStr,
-        usuario: currentUser?.nombre || 'Usuario Operador',
-        resultadoJSON: res.data
+        promptBusqueda: detalleItem.descripcion,
+        resultadoJSON: resultJSON
       });
-
-      setActiveTab('ia_history');
+    } catch (err) {
+      console.error('Error al ejecutar Gemini IA:', err);
+    } finally {
+      setLoadingAiDetalleId(null);
     }
   };
 
-  // PDF Generation with versioning (never overwrites previous PDFs)
-  const handleGenerateVersionedPDF = () => {
-    const existingVersions = cotizaciones.filter(c => c.licitacionId === licitacion.id);
-    const nextVersionNum = existingVersions.length + 1;
+  const handleGenerateVersionedPDF = async () => {
+    try {
+      const nextVersion = cotizaciones.length + 1;
 
-    const doc = generateCotizacionPDF(
-      { id: `COT-${licitacion.numeroLicitacion}-V${nextVersionNum}`, fecha: new Date().toISOString().split('T')[0] },
-      licitacion,
-      cliente,
-      detalles,
-      consultas
-    );
+      // Map item costings with actual assigned supplier prices
+      const itemsConCosteo = detalles.map(det => {
+        const costing = computeItemCosting(det.id);
+        const itemConsultas = consultas.filter(c => c.detalleId === det.id && c.estado === 'Aceptada');
+        
+        // Calculated unit selling price for PDF
+        const precioVentaUnitarioFinal = costing.ventaPromedioPonderado > 0 
+          ? costing.ventaPromedioPonderado 
+          : Math.round((costing.costoPromedioPonderado || 100000) * 1.25);
 
-    doc.save(`Cotizacion_${licitacion.numeroLicitacion || licitacion.id}_v${nextVersionNum}.pdf`);
+        return {
+          ...det,
+          costing,
+          itemConsultas,
+          precioVentaUnitarioFinal
+        };
+      });
 
-    // Add versioned record to Cotizaciones table
-    const now = new Date();
-    const dateStr = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
+      const blob = await generateCotizacionPDF({
+        licitacion,
+        cliente,
+        itemsConCosteo,
+        totales: {
+          subtotalCotizado,
+          ivaTotal,
+          totalCotizacion
+        },
+        version: nextVersion,
+        currentUser
+      });
 
-    onAddCotizacionVersion({
-      id: `COT-${licitacion.id.replace('LIC-', '')}-V${nextVersionNum}`,
-      licitacionId: licitacion.id,
-      clienteId: licitacion.clienteId,
-      numeroCotizacion: `COT-2025-${nextVersionNum.toString().padStart(3, '0')}`,
-      version: nextVersionNum,
-      fechaHora: dateStr,
-      usuario: currentUser?.nombre || 'Usuario Operador',
-      moneda: licitacion.moneda || 'CLP',
-      subtotalNeto: subtotalCotizado,
-      iva: ivaTotal,
-      total: totalCotizacion,
-      pdfUrl: '#',
-      notasCotizacion: licitacion.notasCotizacion || 'Cotización formal Suministros Industriales Orión'
-    });
-  };
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Cotizacion_${licitacion.numeroLicitacion || licitacion.id}_v${nextVersion}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
+      const now = new Date();
+      const dateStr = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
 
-    const res = await uploadFileToStorage(file, 'anexos');
-    setUploading(false);
-
-    if (res.success) {
-      onAddAnexo({
-        id: `ANX-${Date.now().toString().slice(-4)}`,
+      onAddCotizacionVersion({
+        id: `COT-${Date.now().toString().slice(-4)}`,
         licitacionId: licitacion.id,
-        nombre: res.nombre,
-        url: res.url,
-        tipo: res.tipo,
-        fecha: new Date().toISOString().split('T')[0]
+        numeroCotizacion: `COT-${licitacion.numeroLicitacion || licitacion.id}-v${nextVersion}`,
+        version: nextVersion,
+        fechaHora: dateStr,
+        usuario: currentUser?.nombre || 'Operador Licitaciones',
+        subtotal: subtotalCotizado,
+        iva: ivaTotal,
+        total: totalCotizacion,
+        urlPDF: url
       });
+    } catch (err) {
+      console.error('Error generando PDF de Cotización:', err);
     }
   };
 
-  const itemInvestigaciones = investigacionesIa.filter(inv => detalles.some(d => d.id === inv.detalleId));
+  const itemInvestigaciones = investigacionesIa.filter(i => detalles.some(d => d.id === i.detalleId));
+
+  // Current Modal Calculation for Live Preview in Supplier Quote Modal
+  const modalLiveCosting = computeQuoteCosts({
+    licitacionMoneda: licitacion.moneda,
+    monedaProveedor: monedaProveedorInput,
+    tasaCambio: tasaCambioInput,
+    precioBase: precioBaseInput,
+    costoFlete: costoFleteInput,
+    costoInternacion: costoInternacionInput,
+    costoAfex: costoAfexInput,
+    porcentajeImpuesto: porcentajeImpuestoInput,
+    porcentajeMargen: porcentajeMargenInput,
+    cantidadADespachar: cantADespacharInput
+  });
 
   return (
     <div className="space-y-5 pb-12 w-full">
@@ -357,7 +614,7 @@ export default function LicitacionMasterDetail({
           </div>
 
           <div className="flex items-center space-x-2">
-            {/* Status Change Selector */}
+            {/* Status Selector */}
             <div className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-300">
               <span className="text-[10px] text-zinc-500 font-mono uppercase">Estatus:</span>
               <select
@@ -371,7 +628,7 @@ export default function LicitacionMasterDetail({
               </select>
             </div>
 
-            {/* Versioned PDF Generation Action */}
+            {/* Versioned PDF Action */}
             <Button variant="primary" size="sm" onClick={handleGenerateVersionedPDF}>
               <FileCheck className="w-3.5 h-3.5" />
               <span>Cotizar</span>
@@ -379,7 +636,7 @@ export default function LicitacionMasterDetail({
           </div>
         </div>
 
-        {/* Licitacion Metadata Grid (Full Width) */}
+        {/* Licitacion Metadata Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs w-full">
           <div className="bg-zinc-950/50 p-2.5 rounded-lg border border-zinc-800/60">
             <span className="text-zinc-500 text-[10px] block font-mono uppercase">Fecha Ingreso</span>
@@ -406,7 +663,7 @@ export default function LicitacionMasterDetail({
         )}
       </div>
 
-      {/* Tab Navigation for Sub-tables (Clean Simplified Labels) */}
+      {/* Tab Navigation */}
       <div className="flex border-b border-zinc-800 space-x-4 w-full">
         {[
           { id: 'detalles', label: `Productos (${detalles.length})` },
@@ -430,82 +687,50 @@ export default function LicitacionMasterDetail({
         ))}
       </div>
 
-      {/* SUB-TABLE 1: DETALLES DE LICITACIÓN (PRODUCTOS REDISEÑADOS CON LOOK PREMIUM) */}
+      {/* SUB-TABLE 1: PRODUCTOS (NUEVO BOTÓN Y CARDS CON ANEXOS) */}
       {activeTab === 'detalles' && (
         <div className="space-y-4 w-full">
-          {/* Header Action & Form Panel */}
-          <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-lg space-y-3 w-full">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                  <span>Registro de Productos y Requerimientos</span>
-                </h3>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Ingresa los insumos requeridos para solicitar precios a proveedores y calcular costos compuestos.</p>
-              </div>
-
-              <span className="text-xs font-mono font-bold text-blue-400 bg-blue-950/60 border border-blue-800/80 px-2.5 py-1 rounded-lg">
-                {detalles.length} Ítem(s) en Lista
-              </span>
+          {/* Top Banner Action */}
+          <div className="flex items-center justify-between bg-zinc-900/80 p-3.5 rounded-xl border border-zinc-800/90 shadow-md">
+            <div>
+              <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                <span>Líneas de Productos y Suministros Requeridos</span>
+              </h3>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Administra los productos del cliente, sube sus anexos técnicos y gestiona cotizaciones de proveedores.</p>
             </div>
 
-            <form onSubmit={handleCreateDetalle} className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
-              <div className="sm:col-span-8">
-                <Input
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="Ej: Multímetro Digital Fluke 87V TRMS / Válvula Mariposa 6 pulgadas..."
-                  className="w-full bg-zinc-950 border-zinc-800 text-xs"
-                  required
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <input
-                  type="number"
-                  min="1"
-                  value={newCantReq}
-                  onChange={(e) => setNewCantReq(e.target.value)}
-                  placeholder="Cantidad"
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none text-center font-mono font-bold"
-                  title="Cantidad requerida en la licitación"
-                  required
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <Button type="submit" variant="primary" size="md" className="w-full justify-center">
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Agregar Ítem</span>
-                </Button>
-              </div>
-            </form>
+            <Button variant="primary" size="sm" onClick={handleOpenCreateProducto}>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Nuevo Producto</span>
+            </Button>
           </div>
 
-          {/* List of Products (Executive High-End Product Cards) */}
+          {/* List of Product Cards */}
           {detalles.length === 0 ? (
             <EmptyState
-              title="Sin productos en esta licitación"
-              description="Utiliza el formulario superior para ingresar los requerimientos del cliente."
+              title="Sin productos registrados"
+              description="Haz clic en 'Nuevo Producto' para registrar los requerimientos de la licitación."
               icon={FileText}
             />
           ) : (
-            <div className="space-y-3.5 w-full">
+            <div className="space-y-4 w-full">
               {detalles.map((item, idx) => {
-                const { totalQtyDespachable, totalCostoCompuesto, costoPromedioPonderado } = computeItemCosting(item.id);
+                const { totalQtyDespachable, totalCostoCompuesto, totalVentaCompuesto, costoPromedioPonderado, ventaPromedioPonderado } = computeItemCosting(item.id);
                 const itemConsultas = consultas.filter(c => c.detalleId === item.id);
                 const isAiLoading = loadingAiDetalleId === item.id;
                 const reqQty = item.cantidadRequerida || 1;
                 const coveragePercent = Math.min(100, Math.round((totalQtyDespachable / reqQty) * 100));
                 const isFullyCovered = totalQtyDespachable >= reqQty;
                 const isPartiallyCovered = totalQtyDespachable > 0 && totalQtyDespachable < reqQty;
+                const itemAnexos = item.anexos || [];
 
                 return (
                   <div
                     key={item.id}
                     className="bg-zinc-900/70 border border-zinc-800/90 hover:border-zinc-700/80 rounded-xl p-4 space-y-3.5 shadow-xl transition-all backdrop-blur-md"
                   >
-                    {/* Top Card Header */}
+                    {/* Header Card */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/70 pb-3">
                       <div className="flex items-start space-x-3">
                         <div className="w-7 h-7 rounded-lg bg-blue-950/80 border border-blue-800/90 text-blue-400 font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-inner">
@@ -523,48 +748,60 @@ export default function LicitacionMasterDetail({
                             {isFullyCovered && (
                               <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3" />
-                                <span>Cobertura 100% ({totalQtyDespachable}/{reqQty} u.)</span>
+                                <span>Confirmadas {totalQtyDespachable}/{reqQty} u. (100%)</span>
                               </span>
                             )}
 
                             {isPartiallyCovered && (
                               <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/80 text-amber-400 flex items-center gap-1">
                                 <AlertCircle className="w-3 h-3" />
-                                <span>Cobertura Parcial ({totalQtyDespachable}/{reqQty} u.)</span>
+                                <span>Confirmadas {totalQtyDespachable}/{reqQty} u.</span>
                               </span>
                             )}
 
                             {!totalQtyDespachable && (
                               <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-500">
-                                ⚪ Sin Proveedor Asignado
+                                ⚪ Sin Confirmar Proveedor
                               </span>
                             )}
                           </div>
 
-                          {item.notas && <p className="text-xs text-zinc-400 mt-1 italic">{item.notas}</p>}
+                          {item.condicionesEspeciales && (
+                            <p className="text-xs text-blue-300/90 mt-1 font-mono">
+                              <strong>Condiciones / Especificaciones:</strong> {item.condicionesEspeciales}
+                            </p>
+                          )}
+
+                          {item.notas && <p className="text-xs text-zinc-400 mt-0.5 italic">{item.notas}</p>}
                         </div>
                       </div>
 
-                      {/* Action Buttons Deck */}
+                      {/* Card Action Buttons */}
                       <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditProducto(item)}
+                          className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-all border border-zinc-700/80"
+                          title="Editar información y anexos de este producto"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Editar</span>
+                        </button>
+
                         <button
                           type="button"
                           disabled={isAiLoading}
                           onClick={() => handleTriggerAiResearch(item)}
                           className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-950 to-indigo-950 hover:from-blue-900 hover:to-indigo-900 border border-blue-800/80 text-blue-300 text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-all shadow-sm disabled:opacity-50"
-                          title="Investigar distribuidores y precio referencial mercado con Gemini IA"
+                          title="Investigar distribuidores y precio referencial con Gemini IA"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                          <span>{isAiLoading ? 'Investigando IA...' : 'Investigar IA'}</span>
+                          <span>{isAiLoading ? 'Investigando...' : 'Investigar IA'}</span>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedDetalle(item);
-                            setCantADespacharInput(reqQty);
-                            setShowConsultaModal(true);
-                          }}
+                          onClick={() => handleOpenCreateConsulta(item)}
                           className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-all shadow-md"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -573,10 +810,38 @@ export default function LicitacionMasterDetail({
                       </div>
                     </div>
 
-                    {/* 3-KPI Financial Costing Summary Deck */}
+                    {/* Attached Item Files / Anexos (if any) */}
+                    {itemAnexos.length > 0 && (
+                      <div className="space-y-1.5 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/60 text-xs">
+                        <span className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5">
+                          <Paperclip className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Anexos del Producto ({itemAnexos.length}):</span>
+                        </span>
+
+                        <div className="flex flex-wrap gap-2">
+                          {itemAnexos.map(anx => (
+                            <div key={anx.id} className="flex items-center space-x-2 px-2.5 py-1 bg-zinc-900 rounded-md border border-zinc-800 font-mono text-[11px]">
+                              <span className="text-zinc-200 font-sans font-medium">{anx.nombre}</span>
+                              <span className="text-zinc-500">({anx.size || 0} KB)</span>
+
+                              <button
+                                type="button"
+                                onClick={() => setViewingAnexoDetail(anx)}
+                                className="p-1 text-blue-400 hover:text-blue-300 cursor-pointer"
+                                title="Ver anexo"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3-KPI Financial Costing & Selling Summary Deck */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-lg bg-zinc-950/70 border border-zinc-800/80">
                       <div>
-                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Unidades Ofertadas Proveedores:</span>
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Unidades Confirmadas:</span>
                         <div className="flex items-center space-x-2 mt-0.5">
                           <span className="font-bold text-zinc-100 font-mono text-xs">
                             {totalQtyDespachable} / {reqQty} u.
@@ -591,41 +856,74 @@ export default function LicitacionMasterDetail({
                       </div>
 
                       <div>
-                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Costo Unitario Ponderado:</span>
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Costo Unit. Compuesto / Venta Unit.:</span>
                         <span className="font-bold text-zinc-200 font-mono text-xs mt-0.5 block">
-                          {formatMoney(costoPromedioPonderado, licitacion.moneda)} / u.
+                          Costo: {formatMoney(costoPromedioPonderado, licitacion.moneda)} | Venta: <strong className="text-blue-400">{formatMoney(ventaPromedioPonderado, licitacion.moneda)}</strong>
                         </span>
                       </div>
 
                       <div className="sm:text-right">
-                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Costo Total Compuesto Ítem:</span>
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Subtotal Venta Sugerido Ítem:</span>
                         <span className="font-bold text-emerald-400 font-mono text-sm mt-0.5 block">
-                          {formatMoney(totalCostoCompuesto, licitacion.moneda)}
+                          {formatMoney(totalVentaCompuesto, licitacion.moneda)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Assigned Suppliers Sub-Table / Mini List */}
+                    {/* Assigned Suppliers List */}
                     {itemConsultas.length > 0 && (
                       <div className="space-y-1.5 pt-1">
                         <span className="text-zinc-400 text-[11px] font-semibold block flex items-center gap-1.5">
                           <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Proveedores Asignados ({itemConsultas.length}):</span>
+                          <span>Proveedores Cotizados & Adjudicados ({itemConsultas.length}):</span>
                         </span>
 
                         <div className="space-y-1 bg-zinc-950/40 rounded-lg p-2 border border-zinc-800/60 divide-y divide-zinc-800/50">
-                          {itemConsultas.map(c => (
-                            <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 text-xs gap-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-zinc-200">{getProveedorNombre(c.proveedorId)}</span>
-                                <Badge variant="success" size="xs">{c.cantidadADespachar} u.</Badge>
-                              </div>
+                          {itemConsultas.map(c => {
+                            const computed = computeQuoteCosts({
+                              licitacionMoneda: licitacion.moneda,
+                              monedaProveedor: c.monedaProveedor || licitacion.moneda,
+                              tasaCambio: c.tasaCambio || 950,
+                              precioBase: c.precioBase,
+                              costoFlete: c.costoFlete,
+                              costoInternacion: c.costoInternacion,
+                              costoAfex: c.costoAfex,
+                              porcentajeImpuesto: c.porcentajeImpuesto,
+                              porcentajeMargen: c.porcentajeMargen !== undefined ? c.porcentajeMargen : 25,
+                              cantidadADespachar: c.cantidadADespachar
+                            });
 
-                              <div className="font-mono text-zinc-400 text-[11px]">
-                                Base: <span className="text-zinc-300">{formatMoney(c.precioBase, licitacion.moneda)}</span> + (Flete: {c.costoFlete} + Internación: {c.costoInternacion} + AFEX: {c.costoAfex}) = <strong className="text-emerald-400 font-bold">{formatMoney(c.costoUnitarioCompuesto, licitacion.moneda)}/u</strong>
+                            return (
+                              <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 text-xs gap-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-semibold text-zinc-200">{getProveedorNombre(c.proveedorId)}</span>
+                                  <Badge variant="success" size="xs">
+                                    Despacha {c.cantidadADespachar} u. (Cotizó {c.cantidadCotizada || c.cantidadADespachar} u.)
+                                  </Badge>
+                                  {c.monedaProveedor && c.monedaProveedor !== licitacion.moneda && (
+                                    <Badge variant="info" size="xs">
+                                      {c.monedaProveedor} @ {c.tasaCambio || 950}
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center space-x-3">
+                                  <div className="font-mono text-zinc-400 text-[11px] text-right">
+                                    Costo Unit: <span className="text-zinc-300">{formatMoney(computed.costoUnitarioCompuesto, licitacion.moneda)}</span> | Margen: <span className="text-amber-400 font-bold">+{c.porcentajeMargen || 25}%</span> | Venta Unit: <strong className="text-emerald-400">{formatMoney(computed.precioVentaUnitario, licitacion.moneda)}</strong>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditConsulta(c, item)}
+                                    className="p-1 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded transition-colors cursor-pointer"
+                                    title="Editar cotización y cantidades a despachar de este proveedor"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -644,20 +942,49 @@ export default function LicitacionMasterDetail({
             <p className="text-xs text-zinc-500 py-4 text-center">No hay consultas de precios registradas.</p>
           ) : (
             <div className="divide-y divide-zinc-800/80 w-full">
-              {consultas.map(c => (
-                <div key={c.id} className="py-2.5 flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-semibold text-zinc-100">{getProveedorNombre(c.proveedorId)}</p>
-                    <p className="text-[11px] text-zinc-500 font-mono">
-                      Cantidad despachable: {c.cantidadADespachar} u. • Fecha: {c.fecha}
-                    </p>
+              {consultas.map(c => {
+                const det = detalles.find(d => d.id === c.detalleId);
+                const computed = computeQuoteCosts({
+                  licitacionMoneda: licitacion.moneda,
+                  monedaProveedor: c.monedaProveedor || licitacion.moneda,
+                  tasaCambio: c.tasaCambio || 950,
+                  precioBase: c.precioBase,
+                  costoFlete: c.costoFlete,
+                  costoInternacion: c.costoInternacion,
+                  costoAfex: c.costoAfex,
+                  porcentajeImpuesto: c.porcentajeImpuesto,
+                  porcentajeMargen: c.porcentajeMargen !== undefined ? c.porcentajeMargen : 25,
+                  cantidadADespachar: c.cantidadADespachar
+                });
+
+                return (
+                  <div key={c.id} className="py-2.5 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-semibold text-zinc-100">{getProveedorNombre(c.proveedorId)}</p>
+                      <p className="text-[11px] text-zinc-500 font-mono">
+                        Ítem: <strong className="text-zinc-300">{det?.descripcion || 'Genérico'}</strong> • Despacha: {c.cantidadADespachar} u. (Cotizó {c.cantidadCotizada || c.cantidadADespachar} u.) • {c.fecha}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right font-mono">
+                        <p className="font-bold text-emerald-400">Subtotal Venta: {formatMoney(computed.subtotalVenta, licitacion.moneda)}</p>
+                        <p className="text-[10px] text-zinc-500">Costo Unit: {formatMoney(computed.costoUnitarioCompuesto, licitacion.moneda)} | Venta Unit: {formatMoney(computed.precioVentaUnitario, licitacion.moneda)} (+{c.porcentajeMargen || 25}%)</p>
+                      </div>
+
+                      {det && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditConsulta(c, det)}
+                          className="p-1.5 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded transition-colors cursor-pointer"
+                          title="Editar cotización de proveedor"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right font-mono">
-                    <p className="font-bold text-emerald-400">{formatMoney(c.subtotalCosto, licitacion.moneda)}</p>
-                    <p className="text-[10px] text-zinc-500">Unitario Compuesto: {formatMoney(c.costoUnitarioCompuesto, licitacion.moneda)}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>
@@ -670,8 +997,8 @@ export default function LicitacionMasterDetail({
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <p className="text-xs text-zinc-400">Cada emisión genera un nuevo archivo PDF versionado sin eliminar versiones previas.</p>
               <Button variant="primary" size="sm" onClick={handleGenerateVersionedPDF}>
-                <Download className="w-3.5 h-3.5" />
-                <span>Generar Nueva Versión PDF</span>
+                <FileCheck className="w-3.5 h-3.5" />
+                <span>Cotizar</span>
               </Button>
             </div>
 
@@ -690,12 +1017,20 @@ export default function LicitacionMasterDetail({
                         Emitido por: {cot.usuario} • {cot.fechaHora}
                       </p>
                     </div>
+
                     <div className="flex items-center space-x-3">
-                      <span className="font-bold text-emerald-400 font-mono">{formatMoney(cot.total, cot.moneda)}</span>
-                      <Button variant="secondary" size="xs" onClick={handleGenerateVersionedPDF}>
-                        <Download className="w-3 h-3" />
-                        <span>Descargar</span>
-                      </Button>
+                      <span className="font-bold text-emerald-400 font-mono">{formatMoney(cot.total, licitacion.moneda)}</span>
+                      {cot.urlPDF && (
+                        <a
+                          href={cot.urlPDF}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md"
+                          title="Abrir PDF"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -704,7 +1039,7 @@ export default function LicitacionMasterDetail({
 
             {/* Sharing Tools */}
             <div className="pt-3 border-t border-zinc-800">
-              <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Opciones de Envio Directo</h4>
+              <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Opciones de Envío Directo</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <a
                   href={generateWhatsAppShareLink({ id: licitacion.id, total: totalCotizacion }, cliente)}
@@ -788,16 +1123,16 @@ export default function LicitacionMasterDetail({
                       <Sparkles className="w-4 h-4 text-blue-400" />
                       <span className="font-bold text-zinc-100 font-mono">Investigación IA - {inv.fechaHora}</span>
                     </div>
-                    <span className="text-[10px] text-zinc-500 font-mono">Solicitado por: {inv.usuario}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">Ítem: {inv.promptBusqueda}</span>
                   </div>
 
                   {inv.resultadoJSON && (
                     <div className="space-y-2 text-zinc-300">
-                      <p><strong className="text-zinc-100">Resumen del Producto:</strong> {inv.resultadoJSON.resumenProducto}</p>
+                      <p><strong>Resumen Técnico:</strong> {inv.resultadoJSON.resumenTecnico}</p>
                       
                       <div>
-                        <strong className="text-zinc-100 block mb-1">Especificaciones Técnicas:</strong>
-                        <ul className="list-disc list-inside text-zinc-400 space-y-0.5">
+                        <strong className="text-zinc-200 block text-[11px]">Especificaciones Sugeridas:</strong>
+                        <ul className="list-disc list-inside text-zinc-400 font-mono text-[11px] mt-0.5">
                           {inv.resultadoJSON.especificacionesTecnicas?.map((spec, i) => (
                             <li key={i}>{spec}</li>
                           ))}
@@ -837,7 +1172,7 @@ export default function LicitacionMasterDetail({
 
       {/* SUB-TABLE 6: ANEXOS Y ARCHIVOS */}
       {activeTab === 'anexos' && (
-        <Card title="Anexos y Documentos Adjuntos">
+        <Card title="Anexos y Documentos Adjuntos de la Licitación">
           <div className="space-y-4 w-full">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <p className="text-xs text-zinc-400">Documentos y fotografías adjuntas a esta licitación.</p>
@@ -915,7 +1250,7 @@ export default function LicitacionMasterDetail({
         </Card>
       )}
 
-      {/* Modal Visualizador Maximizador Sin Cabecera Redundante (92vw x 83vh) */}
+      {/* Modal Visualizador de Anexos (PDF e Imágenes) */}
       <Modal
         isOpen={!!viewingAnexoDetail}
         onClose={() => setViewingAnexoDetail(null)}
@@ -966,43 +1301,210 @@ export default function LicitacionMasterDetail({
         </div>
       </Modal>
 
-      {/* Modal Consulta de Precio (Costo Compuesto) */}
+      {/* MODAL CREAR / EDITAR PRODUCTO E ÍTEM CON ANEXOS */}
       <Modal
-        isOpen={showConsultaModal}
-        onClose={() => setShowConsultaModal(false)}
-        title="Registrar Consulta de Precio a Proveedor"
+        isOpen={showProductoModal}
+        onClose={() => setShowProductoModal(false)}
+        title={editingDetalle ? `Editar Producto / Requerimiento` : `Registrar Nuevo Producto`}
+        maxWidth="max-w-xl"
       >
-        <form onSubmit={handleCreateConsulta} className="space-y-3">
-          <p className="text-xs text-zinc-400">Producto: <strong className="text-zinc-200">{selectedDetalle?.descripcion}</strong></p>
-
+        <form onSubmit={handleSaveProductoSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Proveedor Consultado</label>
-            <select
-              value={selectedProveedorId}
-              onChange={(e) => setSelectedProveedorId(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+            <label className="block text-xs font-semibold text-zinc-300 mb-1">Descripción del Producto / Insumo *</label>
+            <Input
+              value={prodDesc}
+              onChange={(e) => setProdDesc(e.target.value)}
+              placeholder="Ej: Multímetro Digital Fluke 87V TRMS / Válvula Mariposa 6 pulgadas..."
               required
-            >
-              <option value="">-- Seleccionar Proveedor --</option>
-              {proveedores.map(p => (
-                <option key={p.id} value={p.id}>{p.nombre}</option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Cant. a Despachar</label>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1">Cantidad Requerida *</label>
+              <Input
+                type="number"
+                min="1"
+                value={prodCantReq}
+                onChange={(e) => setProdCantReq(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1">Condiciones / Espec. Técnicas</label>
+              <Input
+                value={prodCondiciones}
+                onChange={(e) => setProdCondiciones(e.target.value)}
+                placeholder="Ej: Norma DIN / Salida 4-20mA / Protocolo HART..."
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1">Notas u Observaciones del Ítem</label>
+            <textarea
+              value={prodNotas}
+              onChange={(e) => setProdNotas(e.target.value)}
+              rows="2"
+              placeholder="Detalles sobre entrega, calibraciones o requisitos de empaque..."
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Upload Attachments inside Product Modal */}
+          <div className="bg-zinc-950/60 p-3 rounded-lg border border-zinc-800/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-blue-400" />
+                <span>Adjuntar Fichas Técnicas, Fotos o PDFs</span>
+              </label>
+
+              <label className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium cursor-pointer flex items-center gap-1 transition-all">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{uploadingItemFile ? 'Subiendo...' : 'Seleccionar Archivos'}</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleItemFileUpload}
+                  accept="application/pdf,image/*"
+                  disabled={uploadingItemFile}
+                />
+              </label>
+            </div>
+
+            {prodAnexos.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {prodAnexos.map((anx) => (
+                  <div key={anx.id} className="flex items-center justify-between p-2 bg-zinc-900 rounded-lg border border-zinc-800 font-mono text-[11px]">
+                    <span className="font-sans font-medium text-zinc-200 truncate max-w-[240px]">{anx.nombre}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-zinc-500">{anx.size || 0} KB</span>
+                      <button
+                        type="button"
+                        onClick={() => setViewingAnexoDetail(anx)}
+                        className="p-1 text-blue-400 hover:text-blue-300 cursor-pointer"
+                        title="Previsualizar archivo"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItemAnexo(anx.id)}
+                        className="p-1 text-red-400 hover:text-red-300 cursor-pointer"
+                        title="Quitar de este producto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setShowProductoModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              {editingDetalle ? 'Guardar Cambios' : 'Registrar Producto'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL REGISTRAR / EDITAR CONSULTA Y PRECIO PROVEEDOR (MULTIMONEDA Y MÁRGENES) */}
+      <Modal
+        isOpen={showConsultaModal}
+        onClose={() => setShowConsultaModal(false)}
+        title={editingConsulta ? `Editar Cotización de Proveedor` : `Asignar Cotización de Proveedor`}
+        maxWidth="max-w-xl"
+      >
+        <form onSubmit={handleSaveConsultaSubmit} className="space-y-3 text-xs">
+          <p className="text-xs text-zinc-400 border-b border-zinc-800 pb-2">
+            Ítem: <strong className="text-zinc-200">{selectedDetalle?.descripcion}</strong> (Req: {selectedDetalle?.cantidadRequerida || 1} u.)
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Proveedor Consultado *</label>
+              <select
+                value={selectedProveedorId}
+                onChange={(e) => setSelectedProveedorId(e.target.value)}
+                className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
+                required
+              >
+                {proveedores.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Moneda del Proveedor</label>
+              <select
+                value={monedaProveedorInput}
+                onChange={(e) => setMonedaProveedorInput(e.target.value)}
+                className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none font-semibold"
+              >
+                <option value="CLP">Pesos Chilenos (CLP)</option>
+                <option value="USD">Dólares (USD)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quantities: Cotizada vs A Despachar */}
+          <div className="grid grid-cols-2 gap-3 bg-zinc-950/60 p-2.5 rounded-lg border border-zinc-800">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Cantidad Cotizada Proveedor</label>
+              <Input
+                type="number"
+                min="1"
+                value={cantCotizadaInput}
+                onChange={(e) => setCantCotizadaInput(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-emerald-400 mb-1">Cantidad a Despachar (Confirmada) *</label>
               <Input
                 type="number"
                 min="1"
                 value={cantADespacharInput}
                 onChange={(e) => setCantADespacharInput(e.target.value)}
+                className="border-emerald-800 text-emerald-300 font-bold"
                 required
               />
             </div>
+          </div>
+
+          {/* Exchange Rate (shown if provider currency differs from licitacion currency) */}
+          {monedaProveedorInput !== licitacion.moneda && (
+            <div className="bg-amber-950/30 p-2.5 rounded-lg border border-amber-800/60 space-y-1">
+              <label className="block text-xs font-semibold text-amber-300">
+                Tasa de Cambio ({monedaProveedorInput} $\rightarrow$ {licitacion.moneda}) *
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                value={tasaCambioInput}
+                onChange={(e) => setTasaCambioInput(e.target.value)}
+                placeholder="Ej: 950.00"
+                className="border-amber-800 text-amber-200 font-mono font-bold"
+                required
+              />
+              <p className="text-[10px] text-amber-400/80">
+                {licitacion.moneda === 'CLP' && monedaProveedorInput === 'USD' ? `Multiplica USD por $${tasaCambioInput} CLP para llevar a pesos.` : `Divide CLP por $${tasaCambioInput} para llevar a USD.`}
+              </p>
+            </div>
+          )}
+
+          {/* Price breakdown in provider currency */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Precio Base Unitario ({licitacion.moneda})</label>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Precio Base Unitario ({monedaProveedorInput}) *</label>
               <Input
                 type="number"
                 value={precioBaseInput}
@@ -1011,19 +1513,19 @@ export default function LicitacionMasterDetail({
                 required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 border-t border-zinc-800 pt-2 text-xs">
             <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">Flete</label>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Flete / Despacho ({monedaProveedorInput})</label>
               <Input
                 type="number"
                 value={costoFleteInput}
                 onChange={(e) => setCostoFleteInput(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">Internación</label>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Internación / Aduana ({monedaProveedorInput})</label>
               <Input
                 type="number"
                 value={costoInternacionInput}
@@ -1031,7 +1533,7 @@ export default function LicitacionMasterDetail({
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">AFEX (Admin)</label>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">AFEX / Admin ({monedaProveedorInput})</label>
               <Input
                 type="number"
                 value={costoAfexInput}
@@ -1040,12 +1542,52 @@ export default function LicitacionMasterDetail({
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-2">
+          {/* Taxes & Margin */}
+          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-800">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Impuesto / IVA / Arancel (%)</label>
+              <Input
+                type="number"
+                value={porcentajeImpuestoInput}
+                onChange={(e) => setPorcentajeImpuestoInput(e.target.value)}
+                placeholder="Ej: 19 para IVA"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-amber-300 mb-1">Margen de Ganancia (%) *</label>
+              <Input
+                type="number"
+                value={porcentajeMargenInput}
+                onChange={(e) => setPorcentajeMargenInput(e.target.value)}
+                placeholder="Ej: 25"
+                className="border-amber-800 text-amber-300 font-bold"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Live Financial Cost & Sales Calculator Box */}
+          <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1.5 text-xs font-mono">
+            <div className="flex justify-between text-zinc-400">
+              <span>Costo Unit. Compuesto ({licitacion.moneda}):</span>
+              <span className="font-bold text-zinc-200">{formatMoney(modalLiveCosting.costoUnitarioCompuesto, licitacion.moneda)}</span>
+            </div>
+            <div className="flex justify-between text-amber-300">
+              <span>Precio Venta Unit. Sugerido (+{porcentajeMargenInput || 0}%):</span>
+              <span className="font-bold">{formatMoney(modalLiveCosting.precioVentaUnitario, licitacion.moneda)}</span>
+            </div>
+            <div className="flex justify-between text-emerald-400 pt-1 border-t border-zinc-800 font-bold text-sm">
+              <span>Subtotal Venta ({cantADespacharInput || 1} u.):</span>
+              <span>{formatMoney(modalLiveCosting.subtotalVenta, licitacion.moneda)}</span>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
             <Button variant="ghost" size="sm" type="button" onClick={() => setShowConsultaModal(false)}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" type="submit">
-              Guardar Consulta
+              {editingConsulta ? 'Guardar Cambios' : 'Guardar Cotización Proveedor'}
             </Button>
           </div>
         </form>

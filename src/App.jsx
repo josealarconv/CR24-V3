@@ -135,13 +135,23 @@ export default function App() {
     }
   };
 
-  const handleAddDetalle = (newDet) => {
-    const updated = addItem('DETALLES', newDet);
+  const handleAddDetalle = (newDetalle) => {
+    const updated = addItem('DETALLES', newDetalle);
     setDetalles(updated);
   };
 
-  const handleAddConsulta = (newCns) => {
-    const updated = addItem('CONSULTAS', newCns);
+  const handleEditDetalle = (updatedDetalle) => {
+    const updated = updateItem('DETALLES', updatedDetalle);
+    setDetalles(updated);
+  };
+
+  const handleAddConsulta = (newConsulta) => {
+    const updated = addItem('CONSULTAS', newConsulta);
+    setConsultas(updated);
+  };
+
+  const handleEditConsulta = (updatedConsulta) => {
+    const updated = updateItem('CONSULTAS', updatedConsulta);
     setConsultas(updated);
   };
 
@@ -274,7 +284,9 @@ export default function App() {
               currentUser={currentUser}
               onBack={() => setSelectedLicitacion(null)}
               onAddDetalle={handleAddDetalle}
+              onEditDetalle={handleEditDetalle}
               onAddConsulta={handleAddConsulta}
+              onEditConsulta={handleEditConsulta}
               onAddAnexo={handleAddAnexo}
               onDeleteAnexo={handleDeleteAnexo}
               onAddNotaLicitacion={handleAddNotaLicitacion}

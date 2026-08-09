@@ -1,7 +1,35 @@
 import { jsPDF } from 'jspdf';
 import { ASSETS } from '../config/assets';
 
-export function generateCotizacionPDF(cotizacion, licitacion, cliente, detalles = [], consultas = []) {
+export function generateCotizacionPDF(param1, licitacionArg, clienteArg, detallesArg = [], consultasArg = []) {
+  let cotizacion, licitacion, cliente, detalles, consultas, totales, version;
+
+  if (param1 && typeof param1 === 'object' && (param1.licitacion || param1.itemsConCosteo)) {
+    licitacion = param1.licitacion;
+    cliente = param1.cliente;
+    detalles = param1.itemsConCosteo || param1.detalles || [];
+    consultas = param1.consultas || [];
+    totales = param1.totales;
+    version = param1.version || 1;
+    cotizacion = {
+      id: `COT-${licitacion?.numeroLicitacion || licitacion?.id || '2026'}-v${version}`,
+      fecha: new Date().toISOString().split('T')[0]
+    };
+  } else {
+    cotizacion = param1 || {};
+    licitacion = licitacionArg;
+    cliente = clienteArg;
+    detalles = detallesArg;
+    consultas = consultasArg;
+  }
+
+  const currency = licitacion?.moneda || 'CLP';
+  const formatVal = (num) => {
+    const v = Number(num) || 0;
+    if (currency === 'USD') return `USD $${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${Math.round(v).toLocaleString('es-CL')}`;
+  };
+
   const doc = new jsPDF();
 
   // Header Colors & Styling
@@ -28,8 +56,8 @@ export function generateCotizacionPDF(cotizacion, licitacion, cliente, detalles 
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`COTIZACIÓN`, 134, 17);
-  doc.text(`${cotizacion.id || 'COT-2025'}`, 134, 23);
+  doc.text(`COTIZACIÓN OFICIAL`, 134, 17);
+  doc.text(`${cotizacion.id || 'COT-2026'}`, 134, 23);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(`Fecha: ${cotizacion.fecha || new Date().toISOString().split('T')[0]}`, 134, 30);
@@ -41,14 +69,14 @@ export function generateCotizacionPDF(cotizacion, licitacion, cliente, detalles 
   doc.text('DATOS DEL CLIENTE', 14, y);
   y += 6;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Cliente: ${cliente?.nombre || 'N/A'}`, 14, y);
-  doc.text(`RUT: ${cliente?.rut || 'N/A'}`, 120, y);
+  doc.setFontSize(9.5);
+  doc.text(`Razón Social: ${cliente?.nombre || 'Cliente General'}`, 14, y);
+  doc.text(`RUT: ${cliente?.rut || 'N/A'}`, 125, y);
   y += 5;
-  doc.text(`Contacto: ${cliente?.contacto || 'N/A'}`, 14, y);
-  doc.text(`Teléfono: ${cliente?.telefono || 'N/A'}`, 120, y);
+  doc.text(`Atención: ${cliente?.contacto || 'Departamento de Adquisiciones'}`, 14, y);
+  doc.text(`Moneda: ${currency}`, 125, y);
   y += 5;
-  doc.text(`Despacho: ${cliente?.direccionDespacho || cliente?.direccion || 'N/A'}`, 14, y);
+  doc.text(`Dirección: ${cliente?.direccionDespacho || cliente?.direccion || 'N/A'}`, 14, y);
   y += 5;
   doc.text(`Licitación Ref: ${licitacion?.numeroLicitacion || licitacion?.id || 'N/A'}`, 14, y);
 
@@ -62,7 +90,7 @@ export function generateCotizacionPDF(cotizacion, licitacion, cliente, detalles 
   doc.text('ITEM / DESCRIPCIÓN', 18, y + 5.5);
   doc.text('CANT.', 125, y + 5.5);
   doc.text('P. UNIT', 145, y + 5.5);
-  doc.text('TOTAL (CLP)', 175, y + 5.5);
+  doc.text(`TOTAL (${currency})`, 175, y + 5.5);
 
   y += 8;
   doc.setTextColor(15, 23, 42);
@@ -81,17 +109,25 @@ export function generateCotizacionPDF(cotizacion, licitacion, cliente, detalles 
         doc.addPage();
         y = 20;
       }
-      
-      const consulta = consultas.find(c => c.detalleId === det.id);
-      const precioUnit = consulta ? consulta.precioUnitario : 10000;
-      const subtotalItem = (det.cantidad || 1) * precioUnit;
+
+      let precioUnit = det.precioVentaUnitarioFinal;
+      if (!precioUnit && det.costing?.ventaPromedioPonderado) {
+        precioUnit = det.costing.ventaPromedioPonderado;
+      }
+      if (!precioUnit) {
+        const consulta = consultas.find(c => c.detalleId === det.id);
+        precioUnit = consulta ? (consulta.precioVentaUnitario || consulta.costoUnitarioCompuesto || 100000) : 100000;
+      }
+
+      const qty = det.cantidadRequerida || det.cantidad || 1;
+      const subtotalItem = qty * precioUnit;
       subtotalSum += subtotalItem;
 
       const desc = det.descripcion.length > 55 ? det.descripcion.substring(0, 52) + '...' : det.descripcion;
       doc.text(`${idx + 1}. ${desc}`, 18, y);
-      doc.text(`${det.cantidad || 1}`, 127, y);
-      doc.text(`$${precioUnit.toLocaleString('es-CL')}`, 145, y);
-      doc.text(`$${subtotalItem.toLocaleString('es-CL')}`, 175, y);
+      doc.text(`${qty}`, 127, y);
+      doc.text(formatVal(precioUnit), 145, y);
+      doc.text(formatVal(subtotalItem), 175, y);
     });
   }
 
@@ -102,26 +138,29 @@ export function generateCotizacionPDF(cotizacion, licitacion, cliente, detalles 
     y = 20;
   }
 
-  const iva = Math.round(subtotalSum * 0.19);
-  const total = subtotalSum + iva;
+  const netSubtotal = totales?.subtotalCotizado !== undefined ? totales.subtotalCotizado : subtotalSum;
+  const iva = totales?.ivaTotal !== undefined ? totales.ivaTotal : (currency === 'CLP' ? Math.round(netSubtotal * 0.19) : 0);
+  const total = totales?.totalCotizacion !== undefined ? totales.totalCotizacion : (netSubtotal + iva);
 
   doc.setDrawColor(226, 232, 240);
   doc.line(14, y, 196, y);
   y += 6;
 
   doc.setFont('helvetica', 'normal');
-  doc.text('Neto Subtotal:', 135, y);
-  doc.text(`$${subtotalSum.toLocaleString('es-CL')}`, 175, y);
+  doc.text('Subtotal Neto:', 135, y);
+  doc.text(formatVal(netSubtotal), 175, y);
   y += 5;
-  doc.text('IVA (19%):', 135, y);
-  doc.text(`$${iva.toLocaleString('es-CL')}`, 175, y);
-  y += 6;
+  if (currency === 'CLP') {
+    doc.text('IVA (19%):', 135, y);
+    doc.text(formatVal(iva), 175, y);
+    y += 6;
+  }
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text('TOTAL FINAL:', 135, y);
-  doc.text(`$${total.toLocaleString('es-CL')}`, 175, y);
+  doc.text(formatVal(total), 175, y);
 
-  // Notes Section (Bloque VII - punto 71)
+  // Notes Section
   y += 14;
   doc.setFillColor(248, 250, 252);
   doc.rect(14, y, 182, 24, 'F');
