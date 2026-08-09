@@ -32,13 +32,13 @@ export default function ConfiguracionView({
   const [subTab, setSubTab] = useState('empresa'); // 'empresa' | 'usuarios' | 'workspaces'
 
   const getInitialValues = () => ({
-    empresa: config.empresa || ASSETS.COMPANY_NAME,
-    rut: config.rut || ASSETS.COMPANY_RUT,
-    direccion: config.direccion || ASSETS.COMPANY_ADDRESS,
-    telefono: config.telefono || ASSETS.COMPANY_PHONE,
-    email: config.email || ASSETS.COMPANY_EMAIL,
-    logoUrl: config.logoUrl || ASSETS.COMPANY_LOGO_URL,
-    condiciones: config.condicionesCotizacionDefecto || ASSETS.condicionesCotizacionDefecto
+    empresa: config.empresa ?? '',
+    rut: config.rut ?? '',
+    direccion: config.direccion ?? '',
+    telefono: config.telefono ?? '',
+    email: config.email ?? '',
+    logoUrl: config.logoUrl ?? '',
+    condiciones: config.condicionesCotizacionDefecto ?? ''
   });
 
   const [initials, setInitials] = useState(getInitialValues());
@@ -347,7 +347,7 @@ function WorkspacesManager({ allWorkspaces, activeWorkspace, onAddWorkspace, onU
         telefono: '',
         email: '',
         contacto: '',
-        logoUrl: '',
+        logoUrl: ASSETS.APP_LOGO_URL,
         condicionesCotizacionDefecto: ''
       }
     };
