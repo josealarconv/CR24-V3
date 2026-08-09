@@ -149,8 +149,10 @@ export default function LicitacionMasterDetail({
   };
 
   const handleConfirmDeleteItem = () => {
-    if (!deletingItemDetail?.item?.id || !onDeleteDetalle) return;
-    onDeleteDetalle(deletingItemDetail.item.id);
+    const targetId = deletingItemDetail?.item?.id || deletingItemDetail?.item?.detalleId || deletingItemDetail?.id;
+    if (targetId && onDeleteDetalle) {
+      onDeleteDetalle(targetId);
+    }
     setDeletingItemDetail(null);
   };
 

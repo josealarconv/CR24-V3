@@ -195,7 +195,11 @@ export function deleteItem(key, idField, idValue) {
   }
 
   const targetStr = String(val || '').trim();
-  const updated = current.filter(item => String(item[field] || '').trim() !== targetStr);
+  const updated = current.filter(item => {
+    const primary = String(item[field] || '').trim();
+    const fallbackId = String(item.id || '').trim();
+    return primary !== targetStr && fallbackId !== targetStr;
+  });
   saveData(key, updated);
   return updated;
 }
