@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Paperclip, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Trash2, Paperclip, X, Upload, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { Button, Badge, Card, EmptyState, Modal, Input } from '../ui/Components';
 
 export default function LicitacionesTableView({
@@ -7,6 +7,8 @@ export default function LicitacionesTableView({
   clientes = [],
   detalles = [],
   anexos = [],
+  cotizaciones = [],
+  notasLicitacion = [],
   selectedMonth = '2026-08',
   setSelectedMonth,
   searchTerm = '',
@@ -14,11 +16,16 @@ export default function LicitacionesTableView({
   onSelectLicitacion,
   onAddLicitacion,
   onEditLicitacion,
+  onDeleteLicitacion,
   onAddAnexo
 }) {
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [editingLic, setEditingLic] = useState(null); // null = Creating, Obj = Editing
+
+  // Delete Integrity Modal States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingLic, setDeletingLic] = useState(null);
 
   // Month Stepper List
   const monthsList = [
@@ -103,6 +110,19 @@ export default function LicitacionesTableView({
     setAttachedFiles([]);
     setErrorMsg('');
     setShowModal(true);
+  };
+
+  const handleOpenDeleteModal = (e, lic) => {
+    e.stopPropagation(); // Prevents navigating to Detail view
+    setDeletingLic(lic);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingLic || !onDeleteLicitacion) return;
+    onDeleteLicitacion(deletingLic.id);
+    setShowDeleteModal(false);
+    setDeletingLic(null);
   };
 
   const handleFileChange = (e) => {
@@ -209,6 +229,14 @@ export default function LicitacionesTableView({
 
   const isSearchingGlobal = searchTerm.trim().length > 0;
   const currentMonthIndex = monthsList.findIndex(m => m.value === selectedMonth);
+
+  // Deletion Integrity Checks for selected licitación
+  const countDetalles = deletingLic ? detalles.filter(d => d.licitacionId === deletingLic.id).length : 0;
+  const countCotizaciones = deletingLic ? cotizaciones.filter(c => c.licitacionId === deletingLic.id).length : 0;
+  const countAnexos = deletingLic ? anexos.filter(a => a.licitacionId === deletingLic.id).length : 0;
+  const countNotas = deletingLic ? notasLicitacion.filter(n => n.licitacionId === deletingLic.id).length : 0;
+  const totalAssociatedRecords = countDetalles + countCotizaciones + countAnexos + countNotas;
+  const hasAssociatedData = totalAssociatedRecords > 0;
 
   return (
     <div className="space-y-3 w-full">
@@ -360,19 +388,24 @@ export default function LicitacionesTableView({
                     {lic.moneda || 'CLP'}
                   </td>
                   <td className="px-4 py-3 text-right font-sans">
-                    <div className="flex items-center justify-end space-x-1.5">
+                    <div className="flex items-center justify-end space-x-1">
                       <button
                         type="button"
                         onClick={(e) => handleOpenEditModal(e, lic)}
-                        className="p-1 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-950/40 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-950/40 transition-colors cursor-pointer"
                         title="Editar Licitación"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
 
-                      <Button variant="ghost" size="xs" onClick={() => onSelectLicitacion(lic)}>
-                        <span>Ver Ficha</span>
-                      </Button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenDeleteModal(e, lic)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer"
+                        title="Eliminar Licitación"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -550,6 +583,74 @@ export default function LicitacionesTableView({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Eliminación con Verificación de Integridad Referencial */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeletingLic(null);
+        }}
+        title={`Eliminar Licitación: ${deletingLic ? (deletingLic.numeroLicitacion || deletingLic.id) : ''}`}
+      >
+        <div className="space-y-4">
+          {hasAssociatedData ? (
+            <div className="p-3.5 bg-amber-950/50 border border-amber-800/80 rounded-xl space-y-2">
+              <div className="flex items-center space-x-2 text-amber-400 font-bold text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>No se puede eliminar esta licitación</span>
+              </div>
+
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Esta licitación no se encuentra vacía. Contiene información asociada en la base de datos:
+              </p>
+
+              <ul className="text-xs text-amber-300/90 list-disc list-inside space-y-1 font-mono pl-1">
+                {countDetalles > 0 && <li>{countDetalles} ítem(s) de productos o consultas a proveedores</li>}
+                {countCotizaciones > 0 && <li>{countCotizaciones} cotización(es) PDF emitida(s)</li>}
+                {countAnexos > 0 && <li>{countAnexos} archivo(s) anexo(s) adjunto(s)</li>}
+                {countNotas > 0 && <li>{countNotas} nota(s) en la bitácora interna</li>}
+              </ul>
+
+              <p className="text-[11px] text-zinc-400 pt-1">
+                Para eliminar esta licitación, primero debe ingresar a su ficha y remover todos los elementos vinculados.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-zinc-900 border border-zinc-800 rounded-xl space-y-2">
+              <p className="text-xs text-zinc-200">
+                ¿Está seguro que desea eliminar permanentemente la licitación <strong className="text-zinc-100">{deletingLic?.numeroLicitacion || deletingLic?.id}</strong>?
+              </p>
+              <p className="text-xs text-zinc-400">
+                Esta licitación se encuentra completamente limpia sin registros asociados. Esta acción no se podrá deshacer.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeletingLic(null);
+              }}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={hasAssociatedData}
+              onClick={handleConfirmDelete}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Confirmar Eliminar</span>
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

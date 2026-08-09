@@ -118,6 +118,14 @@ export default function App() {
     }
   };
 
+  const handleDeleteLicitacion = (licId) => {
+    const updated = deleteItem('LICITACIONES', licId);
+    setLicitaciones(updated);
+    if (selectedLicitacion && selectedLicitacion.id === licId) {
+      setSelectedLicitacion(null);
+    }
+  };
+
   const handleUpdateEstatusLicitacion = (licId, newEstatus) => {
     const updated = licitaciones.map(l => l.id === licId ? { ...l, estatus: newEstatus } : l);
     saveData('LICITACIONES', updated);
@@ -274,6 +282,8 @@ export default function App() {
               clientes={clientes}
               detalles={detalles}
               anexos={anexos}
+              cotizaciones={cotizaciones}
+              notasLicitacion={notasLicitacion}
               selectedMonth={selectedMonth}
               setSelectedMonth={setSelectedMonth}
               searchTerm={searchTerm}
@@ -281,6 +291,7 @@ export default function App() {
               onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
               onAddLicitacion={handleAddLicitacion}
               onEditLicitacion={handleEditLicitacion}
+              onDeleteLicitacion={handleDeleteLicitacion}
               onAddAnexo={handleAddAnexo}
             />
           )
