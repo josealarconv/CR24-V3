@@ -568,12 +568,22 @@ export default function LicitacionMasterDetail({
       const now = new Date();
       const dateStr = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
 
+      // Extract the actual data payload and normalize field names
+      const aiData = resultJSON?.data || resultJSON || {};
+      const normalizedResult = {
+        resumenTecnico: aiData.resumenTecnico || aiData.resumenProducto || '',
+        especificacionesTecnicas: aiData.especificacionesTecnicas || [],
+        proveedoresLocalesChilenos: aiData.proveedoresLocalesChilenos || [],
+        proveedoresInternacionales: aiData.proveedoresInternacionales || [],
+        precioRangoMercado: aiData.precioRangoMercado || ''
+      };
+
       onAddInvestigacionIa({
         id: `INV-${Date.now().toString().slice(-4)}`,
         detalleId: detalleItem.id,
         fechaHora: dateStr,
         promptBusqueda: detalleItem.descripcion,
-        resultadoJSON: resultJSON
+        resultadoJSON: normalizedResult
       });
     } catch (err) {
       console.error('Error al ejecutar Gemini IA:', err);

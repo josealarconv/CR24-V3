@@ -1,7 +1,7 @@
 {
   "name": "cr24-v3",
   "private": true,
-  "version": "4.0.7",
+  "version": "4.0.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
