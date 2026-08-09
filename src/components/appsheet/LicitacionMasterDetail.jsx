@@ -22,6 +22,7 @@ import {
   Printer,
   Trash2,
   Edit2,
+  X,
   Image as ImageIcon,
   UserPlus,
   AlertTriangle,
