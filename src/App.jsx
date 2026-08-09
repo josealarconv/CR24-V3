@@ -141,20 +141,22 @@ export default function App() {
   };
 
   const handleEditDetalle = (updatedDetalle) => {
-    const updated = updateItem('DETALLES', updatedDetalle);
+    if (!updatedDetalle) return;
+    const targetIdStr = String(updatedDetalle.id || updatedDetalle.detalleId || '').trim();
+    const updated = updateItem('DETALLES', 'id', targetIdStr, updatedDetalle);
     setDetalles(updated);
   };
 
   const handleDeleteDetalle = (detalleId) => {
     if (!detalleId) return;
     const targetIdStr = String(detalleId).trim();
-    deleteItem('DETALLES', 'id', targetIdStr);
-    deleteItem('CONSULTAS', 'detalleId', targetIdStr);
-    deleteItem('INVESTIGACIONES_IA', 'detalleId', targetIdStr);
+    const updatedDetalles = deleteItem('DETALLES', 'id', targetIdStr);
+    const updatedConsultas = deleteItem('CONSULTAS', 'detalleId', targetIdStr);
+    const updatedInvestigaciones = deleteItem('INVESTIGACIONES_IA', 'detalleId', targetIdStr);
 
-    setDetalles(prev => prev.filter(d => String(d.id || d.detalleId || '').trim() !== targetIdStr));
-    setConsultas(prev => prev.filter(c => String(c.detalleId || '').trim() !== targetIdStr));
-    setInvestigacionesIa(prev => prev.filter(i => String(i.detalleId || '').trim() !== targetIdStr));
+    setDetalles(updatedDetalles);
+    setConsultas(updatedConsultas);
+    setInvestigacionesIa(updatedInvestigaciones);
   };
 
   const handleAddConsulta = (newConsulta) => {
