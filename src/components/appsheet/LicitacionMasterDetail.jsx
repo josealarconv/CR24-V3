@@ -430,120 +430,206 @@ export default function LicitacionMasterDetail({
         ))}
       </div>
 
-      {/* SUB-TABLE 1: DETALLES DE LICITACIÓN (LINE ITEMS) */}
+      {/* SUB-TABLE 1: DETALLES DE LICITACIÓN (PRODUCTOS REDISEÑADOS CON LOOK PREMIUM) */}
       {activeTab === 'detalles' && (
         <div className="space-y-4 w-full">
-          <form onSubmit={handleCreateDetalle} className="flex gap-2 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/80 w-full">
-            <Input
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-              placeholder="Descripción detallada del producto o suministro requerido..."
-              className="flex-1"
-              required
-            />
-            <input
-              type="number"
-              min="1"
-              value={newCantReq}
-              onChange={(e) => setNewCantReq(e.target.value)}
-              placeholder="Cant. Requerida"
-              className="w-28 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none text-center font-mono"
-              title="Cantidad requerida en la licitación"
-              required
-            />
-            <Button type="submit" variant="secondary" size="sm">
-              <Plus className="w-3.5 h-3.5" />
-              <span>Agregar Línea</span>
-            </Button>
-          </form>
+          {/* Header Action & Form Panel */}
+          <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/90 shadow-lg space-y-3 w-full">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                  <span>Registro de Productos y Requerimientos</span>
+                </h3>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Ingresa los insumos requeridos para solicitar precios a proveedores y calcular costos compuestos.</p>
+              </div>
 
+              <span className="text-xs font-mono font-bold text-blue-400 bg-blue-950/60 border border-blue-800/80 px-2.5 py-1 rounded-lg">
+                {detalles.length} Ítem(s) en Lista
+              </span>
+            </div>
+
+            <form onSubmit={handleCreateDetalle} className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+              <div className="sm:col-span-8">
+                <Input
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="Ej: Multímetro Digital Fluke 87V TRMS / Válvula Mariposa 6 pulgadas..."
+                  className="w-full bg-zinc-950 border-zinc-800 text-xs"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <input
+                  type="number"
+                  min="1"
+                  value={newCantReq}
+                  onChange={(e) => setNewCantReq(e.target.value)}
+                  placeholder="Cantidad"
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none text-center font-mono font-bold"
+                  title="Cantidad requerida en la licitación"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <Button type="submit" variant="primary" size="md" className="w-full justify-center">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Agregar Ítem</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* List of Products (Executive High-End Product Cards) */}
           {detalles.length === 0 ? (
-            <p className="text-center py-8 text-zinc-500 text-xs">Sin productos registrados en esta licitación.</p>
+            <EmptyState
+              title="Sin productos en esta licitación"
+              description="Utiliza el formulario superior para ingresar los requerimientos del cliente."
+              icon={FileText}
+            />
           ) : (
-            <div className="space-y-3 w-full">
+            <div className="space-y-3.5 w-full">
               {detalles.map((item, idx) => {
                 const { totalQtyDespachable, totalCostoCompuesto, costoPromedioPonderado } = computeItemCosting(item.id);
                 const itemConsultas = consultas.filter(c => c.detalleId === item.id);
                 const isAiLoading = loadingAiDetalleId === item.id;
+                const reqQty = item.cantidadRequerida || 1;
+                const coveragePercent = Math.min(100, Math.round((totalQtyDespachable / reqQty) * 100));
+                const isFullyCovered = totalQtyDespachable >= reqQty;
+                const isPartiallyCovered = totalQtyDespachable > 0 && totalQtyDespachable < reqQty;
 
                 return (
-                  <Card key={item.id} className="space-y-3 w-full">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[11px] text-blue-400 font-mono font-bold">Línea #{idx + 1}</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-950 text-zinc-400 border border-zinc-800">
-                            Requerido: {item.cantidadRequerida || 1} u.
-                          </span>
+                  <div
+                    key={item.id}
+                    className="bg-zinc-900/70 border border-zinc-800/90 hover:border-zinc-700/80 rounded-xl p-4 space-y-3.5 shadow-xl transition-all backdrop-blur-md"
+                  >
+                    {/* Top Card Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/70 pb-3">
+                      <div className="flex items-start space-x-3">
+                        <div className="w-7 h-7 rounded-lg bg-blue-950/80 border border-blue-800/90 text-blue-400 font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-inner">
+                          {String(idx + 1).padStart(2, '0')}
                         </div>
-                        <h3 className="text-sm font-semibold text-zinc-100 mt-1">{item.descripcion}</h3>
-                        {item.notas && <p className="text-xs text-zinc-500 mt-0.5">{item.notas}</p>}
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-sm font-bold text-zinc-100 tracking-wide">{item.descripcion}</h3>
+                            
+                            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-zinc-950 text-zinc-300 border border-zinc-800">
+                              📦 Requerido: {reqQty} u.
+                            </span>
+
+                            {isFullyCovered && (
+                              <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Cobertura 100% ({totalQtyDespachable}/{reqQty} u.)</span>
+                              </span>
+                            )}
+
+                            {isPartiallyCovered && (
+                              <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/80 text-amber-400 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                <span>Cobertura Parcial ({totalQtyDespachable}/{reqQty} u.)</span>
+                              </span>
+                            )}
+
+                            {!totalQtyDespachable && (
+                              <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-500">
+                                ⚪ Sin Proveedor Asignado
+                              </span>
+                            )}
+                          </div>
+
+                          {item.notas && <p className="text-xs text-zinc-400 mt-1 italic">{item.notas}</p>}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        {/* Gemini AI Research Action */}
-                        <Button
-                          variant="secondary"
-                          size="xs"
+                      {/* Action Buttons Deck */}
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          type="button"
                           disabled={isAiLoading}
                           onClick={() => handleTriggerAiResearch(item)}
+                          className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-950 to-indigo-950 hover:from-blue-900 hover:to-indigo-900 border border-blue-800/80 text-blue-300 text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-all shadow-sm disabled:opacity-50"
+                          title="Investigar distribuidores y precio referencial mercado con Gemini IA"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                          <span>{isAiLoading ? 'Investigando IA...' : 'Investigar con IA'}</span>
-                        </Button>
+                          <span>{isAiLoading ? 'Investigando IA...' : 'Investigar IA'}</span>
+                        </button>
 
-                        <Button
-                          variant="primary"
-                          size="xs"
+                        <button
+                          type="button"
                           onClick={() => {
                             setSelectedDetalle(item);
-                            setCantADespacharInput(item.cantidadRequerida || 1);
+                            setCantADespacharInput(reqQty);
                             setShowConsultaModal(true);
                           }}
+                          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-all shadow-md"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Asignar Precio Proveedor</span>
-                        </Button>
+                          <span>Asignar Proveedor</span>
+                        </button>
                       </div>
                     </div>
 
-                    {/* Multi-supplier Costing Summary Banner */}
-                    <div className="bg-zinc-950/60 p-3 rounded-lg border border-zinc-800/80 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {/* 3-KPI Financial Costing Summary Deck */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-lg bg-zinc-950/70 border border-zinc-800/80">
                       <div>
-                        <span className="text-zinc-500 text-[10px] block font-mono">Unidades Ofrecidas por Proveedores:</span>
-                        <span className="font-bold text-zinc-200 font-mono">
-                          {totalQtyDespachable} / {item.cantidadRequerida || 1} u.
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Unidades Ofertadas Proveedores:</span>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <span className="font-bold text-zinc-100 font-mono text-xs">
+                            {totalQtyDespachable} / {reqQty} u.
+                          </span>
+                          <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${isFullyCovered ? 'bg-emerald-400' : 'bg-blue-400'}`}
+                              style={{ width: `${coveragePercent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Costo Unitario Ponderado:</span>
+                        <span className="font-bold text-zinc-200 font-mono text-xs mt-0.5 block">
+                          {formatMoney(costoPromedioPonderado, licitacion.moneda)} / u.
                         </span>
                       </div>
-                      <div>
-                        <span className="text-zinc-500 text-[10px] block font-mono">Costo Promedio Ponderado Unitario:</span>
-                        <span className="font-bold text-zinc-200 font-mono">
-                          {formatMoney(costoPromedioPonderado, licitacion.moneda)}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-zinc-500 text-[10px] block font-mono">Costo Total Mezclado Ítem:</span>
-                        <span className="font-bold text-emerald-400 font-mono">
+
+                      <div className="sm:text-right">
+                        <span className="text-zinc-500 text-[10px] font-mono uppercase block">Costo Total Compuesto Ítem:</span>
+                        <span className="font-bold text-emerald-400 font-mono text-sm mt-0.5 block">
                           {formatMoney(totalCostoCompuesto, licitacion.moneda)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Associated Supplier Consultas */}
+                    {/* Assigned Suppliers Sub-Table / Mini List */}
                     {itemConsultas.length > 0 && (
-                      <div className="space-y-1.5 border-t border-zinc-800/60 pt-2 text-xs">
-                        <span className="text-zinc-400 text-[11px] font-semibold block">Desglose de Proveedores Asociados:</span>
-                        {itemConsultas.map(c => (
-                          <div key={c.id} className="flex items-center justify-between py-1 border-b border-zinc-800/40 last:border-0">
-                            <span className="text-zinc-300">{getProveedorNombre(c.proveedorId)}</span>
-                            <span className="font-mono text-zinc-400">
-                              Despacha {c.cantidadADespachar} u. @ Base: {formatMoney(c.precioBase, licitacion.moneda)} + (Flete: {c.costoFlete} + Internación: {c.costoInternacion} + AFEX: {c.costoAfex}) = <strong className="text-emerald-400">{formatMoney(c.costoUnitarioCompuesto, licitacion.moneda)} / c/u</strong>
-                            </span>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-zinc-400 text-[11px] font-semibold block flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Proveedores Asignados ({itemConsultas.length}):</span>
+                        </span>
+
+                        <div className="space-y-1 bg-zinc-950/40 rounded-lg p-2 border border-zinc-800/60 divide-y divide-zinc-800/50">
+                          {itemConsultas.map(c => (
+                            <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 text-xs gap-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold text-zinc-200">{getProveedorNombre(c.proveedorId)}</span>
+                                <Badge variant="success" size="xs">{c.cantidadADespachar} u.</Badge>
+                              </div>
+
+                              <div className="font-mono text-zinc-400 text-[11px]">
+                                Base: <span className="text-zinc-300">{formatMoney(c.precioBase, licitacion.moneda)}</span> + (Flete: {c.costoFlete} + Internación: {c.costoInternacion} + AFEX: {c.costoAfex}) = <strong className="text-emerald-400 font-bold">{formatMoney(c.costoUnitarioCompuesto, licitacion.moneda)}/u</strong>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
-                  </Card>
+                  </div>
                 );
               })}
             </div>
