@@ -1,9 +1,55 @@
-import { auth, firebaseConfig } from '../config/firebase';
+import { auth } from '../config/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getData } from './storageService';
+import { getData, getWorkspaces } from './storageService';
 
-const MASTER_DEV_EMAIL = 'josealarconv@gmail.com';
-const ADMIN_PROFILE_ID = 'PRF-ADMIN';
+const CREATOR_EMAIL = 'josealarconv@gmail.com';
+const CREATOR_DEFAULT_WS = 'WS-CREATOR';
+
+// ============================================================
+// WORKSPACE SESSION
+// ============================================================
+export function getActiveWorkspaceId() {
+  return localStorage.getItem('cr24_active_workspace_id') || null;
+}
+
+export function setActiveWorkspace(wsId) {
+  localStorage.setItem('cr24_active_workspace_id', wsId);
+  window.dispatchEvent(new Event('workspace-changed'));
+}
+
+export function getActiveWorkspace() {
+  const wsId = getActiveWorkspaceId();
+  if (!wsId) return null;
+  const workspaces = getWorkspaces();
+  return workspaces.find(ws => ws.id === wsId) || null;
+}
+
+// Get all workspaces the current user can access
+export function getUserWorkspaces() {
+  const user = getActiveUser();
+  if (!user) return [];
+  const workspaces = getWorkspaces();
+  if (isCreator()) return workspaces;
+  if (!user.workspaceId) return workspaces;
+  return workspaces.filter(ws => ws.id === user.workspaceId);
+}
+
+// ============================================================
+// USER & ROLE CHECKS
+// ============================================================
+export function isCreator(email) {
+  const checkEmail = email || getActiveUser()?.email;
+  return checkEmail?.toLowerCase() === CREATOR_EMAIL.toLowerCase();
+}
+
+export function isWorkspaceAdmin(workspaceId) {
+  const user = getActiveUser();
+  if (!user) return false;
+  if (isCreator()) return true;
+  if (user.workspaceId !== workspaceId) return false;
+  const profile = getUserProfile(user);
+  return profile?.nombre === 'Administrador' || profile?.esProtegido === true;
+}
 
 export function getActiveUser() {
   const email = localStorage.getItem('cr24_session_user_email');
@@ -11,13 +57,14 @@ export function getActiveUser() {
 
   const usuarios = getData('USUARIOS');
   const user = usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
-  
+
   if (!user || !user.activo) {
-    if (email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase()) {
+    if (email.toLowerCase() === CREATOR_EMAIL.toLowerCase()) {
       return {
-        email: MASTER_DEV_EMAIL,
+        email: CREATOR_EMAIL,
         nombre: 'José Alarcón',
-        perfilId: ADMIN_PROFILE_ID,
+        perfilId: 'PRF-SUPERADMIN',
+        workspaceId: null,
         activo: true
       };
     }
@@ -30,6 +77,9 @@ export function isAuthenticated() {
   return !!getActiveUser();
 }
 
+// ============================================================
+// LOGIN
+// ============================================================
 export function loginWithEmail(email) {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail) {
@@ -39,9 +89,14 @@ export function loginWithEmail(email) {
   const usuarios = getData('USUARIOS');
   const user = usuarios.find(u => u.email.toLowerCase() === cleanEmail);
 
-  if (cleanEmail === MASTER_DEV_EMAIL.toLowerCase()) {
-    localStorage.setItem('cr24_session_user_email', MASTER_DEV_EMAIL);
-    localStorage.setItem('cr24_active_user_email', MASTER_DEV_EMAIL);
+  // Creator always has access
+  if (cleanEmail === CREATOR_EMAIL.toLowerCase()) {
+    localStorage.setItem('cr24_session_user_email', CREATOR_EMAIL);
+    localStorage.setItem('cr24_active_user_email', CREATOR_EMAIL);
+    // Default to Creator workspace on login
+    if (!getActiveWorkspaceId()) {
+      setActiveWorkspace(CREATOR_DEFAULT_WS);
+    }
     window.dispatchEvent(new Event('auth-state-changed'));
     return { success: true, user: getActiveUser() };
   }
@@ -62,6 +117,10 @@ export function loginWithEmail(email) {
 
   localStorage.setItem('cr24_session_user_email', user.email);
   localStorage.setItem('cr24_active_user_email', user.email);
+  // Set workspace to user's assigned workspace
+  if (user.workspaceId) {
+    setActiveWorkspace(user.workspaceId);
+  }
   window.dispatchEvent(new Event('auth-state-changed'));
   return { success: true, user };
 }
@@ -91,9 +150,13 @@ export async function loginWithGoogle() {
 
 export function logout() {
   localStorage.removeItem('cr24_session_user_email');
+  localStorage.removeItem('cr24_active_workspace_id');
   window.dispatchEvent(new Event('auth-state-changed'));
 }
 
+// ============================================================
+// PROFILE & PERMISSIONS
+// ============================================================
 export function getUserProfile(user) {
   if (!user) return null;
   const perfiles = getData('PERFILES');
@@ -104,9 +167,8 @@ export function hasPermission(moduleName, action = 'ver') {
   const user = getActiveUser();
   if (!user || !user.activo) return false;
 
-  if (user.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase() || user.perfilId === ADMIN_PROFILE_ID) {
-    return true;
-  }
+  // Creator has full access everywhere
+  if (isCreator()) return true;
 
   const profile = getUserProfile(user);
   if (!profile || !profile.permisos) return false;
@@ -121,9 +183,7 @@ export function getPermissionScope(moduleName) {
   const user = getActiveUser();
   if (!user || !user.activo) return 'propios';
 
-  if (user.email.toLowerCase() === MASTER_DEV_EMAIL.toLowerCase() || user.perfilId === ADMIN_PROFILE_ID) {
-    return 'todos';
-  }
+  if (isCreator()) return 'todos';
 
   const profile = getUserProfile(user);
   if (!profile || !profile.permisos || !profile.permisos[moduleName]) return 'propios';

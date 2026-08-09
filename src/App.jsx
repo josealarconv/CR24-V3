@@ -13,12 +13,23 @@ import ConfiguracionView from './components/configuracion/ConfiguracionView';
 import {
   initStorage,
   getData,
+  getWorkspaceData,
   saveData,
   addItem,
   updateItem,
-  deleteItem
+  deleteItem,
+  getWorkspaces,
+  updateWorkspace
 } from './services/storageService';
-import { getActiveUser, logout } from './services/authService';
+import {
+  getActiveUser,
+  getActiveWorkspace,
+  getActiveWorkspaceId,
+  setActiveWorkspace,
+  getUserWorkspaces,
+  isCreator,
+  logout
+} from './services/authService';
 
 export default function App() {
   const [activeView, setActiveView] = useState('licitaciones');
@@ -31,7 +42,11 @@ export default function App() {
   // Auth State
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Data Store
+  // Workspace State
+  const [activeWs, setActiveWs] = useState(null);
+  const [allWorkspaces, setAllWorkspaces] = useState([]);
+
+  // Data Store (filtered by active workspace)
   const [licitaciones, setLicitaciones] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -47,37 +62,76 @@ export default function App() {
 
   useEffect(() => {
     initStorage();
-    loadAllData();
     setCurrentUser(getActiveUser());
+    refreshWorkspace();
 
-    const handleStorageUpdate = () => loadAllData();
+    const handleStorageUpdate = () => loadWorkspaceData();
     const handleAuthChange = () => {
-      loadAllData();
       setCurrentUser(getActiveUser());
+      refreshWorkspace();
+    };
+    const handleWorkspaceChange = () => {
+      refreshWorkspace();
     };
 
     window.addEventListener('storage-update', handleStorageUpdate);
     window.addEventListener('auth-state-changed', handleAuthChange);
+    window.addEventListener('workspace-changed', handleWorkspaceChange);
 
     return () => {
       window.removeEventListener('storage-update', handleStorageUpdate);
       window.removeEventListener('auth-state-changed', handleAuthChange);
+      window.removeEventListener('workspace-changed', handleWorkspaceChange);
     };
   }, []);
 
-  const loadAllData = () => {
-    setLicitaciones(getData('LICITACIONES'));
-    setClientes(getData('CLIENTES'));
-    setProveedores(getData('PROVEEDORES'));
-    setDetalles(getData('DETALLES'));
-    setConsultas(getData('CONSULTAS'));
-    setCotizaciones(getData('COTIZACIONES'));
-    setAnexos(getData('ANEXOS'));
-    setUsuarios(getData('USUARIOS'));
-    setPerfiles(getData('PERFILES'));
-    setNotasLicitacion(getData('NOTAS_LICITACION'));
-    setInvestigacionesIa(getData('INVESTIGACIONES_IA'));
-    setConfiguracion(getData('CONFIGURACION'));
+  const refreshWorkspace = () => {
+    const ws = getActiveWorkspace();
+    setActiveWs(ws);
+    setAllWorkspaces(getWorkspaces());
+    loadWorkspaceData();
+  };
+
+  // Load data filtered by the active workspace
+  const loadWorkspaceData = () => {
+    const wsId = getActiveWorkspaceId();
+    setAllWorkspaces(getWorkspaces());
+    const ws = getActiveWorkspace();
+    setActiveWs(ws);
+
+    // Workspace-scoped data
+    setLicitaciones(getWorkspaceData('LICITACIONES', wsId));
+    setClientes(getWorkspaceData('CLIENTES', wsId));
+    setProveedores(getWorkspaceData('PROVEEDORES', wsId));
+    setDetalles(getWorkspaceData('DETALLES', wsId));
+    setConsultas(getWorkspaceData('CONSULTAS', wsId));
+    setCotizaciones(getWorkspaceData('COTIZACIONES', wsId));
+    setAnexos(getWorkspaceData('ANEXOS', wsId));
+    setNotasLicitacion(getWorkspaceData('NOTAS_LICITACION', wsId));
+    setInvestigacionesIa(getWorkspaceData('INVESTIGACIONES_IA', wsId));
+
+    // Perfiles and Usuarios: filter by workspace (Creator sees all)
+    const allPerfiles = getData('PERFILES');
+    const allUsuarios = getData('USUARIOS');
+    if (isCreator() && wsId) {
+      setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId || p.workspaceId === null));
+      setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId || u.workspaceId === null));
+    } else if (wsId) {
+      setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId));
+      setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId));
+    } else {
+      setPerfiles(allPerfiles);
+      setUsuarios(allUsuarios);
+    }
+
+    // Configuration from workspace
+    setConfiguracion(ws?.config || getData('CONFIGURACION') || {});
+  };
+
+  const handleWorkspaceSwitch = (wsId) => {
+    setActiveWorkspace(wsId);
+    setSelectedLicitacion(null);
+    setActiveView('licitaciones');
   };
 
   if (!currentUser) {
@@ -87,8 +141,6 @@ export default function App() {
   // Monthly & Global Search Filtering
   const filteredLicitaciones = licitaciones.filter(lic => {
     const q = searchTerm.trim().toLowerCase();
-    
-    // Global search override: If user types a search query, search across ALL historical records
     if (q) {
       const cli = clientes.find(c => c.id === lic.clienteId);
       const cliNombre = cli ? cli.nombre.toLowerCase() : '';
@@ -96,25 +148,26 @@ export default function App() {
       const notas = (lic.notas || '').toLowerCase();
       return numLic.includes(q) || cliNombre.includes(q) || notas.includes(q);
     }
-
-    // Default: Filter strictly by active month to optimize database queries
     if (selectedMonth !== 'ALL') {
       if (lic.fecha && !lic.fecha.startsWith(selectedMonth)) return false;
     }
-
     return true;
   });
 
+  // Get active workspaceId for injecting into new records
+  const wsId = getActiveWorkspaceId();
+
   const handleAddLicitacion = (newLic) => {
-    const updated = addItem('LICITACIONES', { ...newLic, createdBy: currentUser.email });
-    setLicitaciones(updated);
+    const updated = addItem('LICITACIONES', { ...newLic, workspaceId: wsId, createdBy: currentUser.email });
+    setLicitaciones(updated.filter(l => l.workspaceId === wsId));
     setSelectedLicitacion(newLic);
   };
 
   const handleEditLicitacion = (updatedLic) => {
-    const updated = licitaciones.map(l => l.id === updatedLic.id ? { ...l, ...updatedLic } : l);
+    const allData = getData('LICITACIONES');
+    const updated = allData.map(l => l.id === updatedLic.id ? { ...l, ...updatedLic } : l);
     saveData('LICITACIONES', updated);
-    setLicitaciones(updated);
+    setLicitaciones(updated.filter(l => l.workspaceId === wsId));
     if (selectedLicitacion && selectedLicitacion.id === updatedLic.id) {
       setSelectedLicitacion(prev => ({ ...prev, ...updatedLic }));
     }
@@ -129,17 +182,18 @@ export default function App() {
   };
 
   const handleUpdateEstatusLicitacion = (licId, newEstatus) => {
-    const updated = licitaciones.map(l => l.id === licId ? { ...l, estatus: newEstatus } : l);
+    const allData = getData('LICITACIONES');
+    const updated = allData.map(l => l.id === licId ? { ...l, estatus: newEstatus } : l);
     saveData('LICITACIONES', updated);
-    setLicitaciones(updated);
+    setLicitaciones(updated.filter(l => l.workspaceId === wsId));
     if (selectedLicitacion && selectedLicitacion.id === licId) {
       setSelectedLicitacion(prev => ({ ...prev, estatus: newEstatus }));
     }
   };
 
   const handleAddDetalle = (newDetalle) => {
-    const updated = addItem('DETALLES', newDetalle);
-    setDetalles(updated);
+    const updated = addItem('DETALLES', { ...newDetalle, workspaceId: wsId });
+    setDetalles(updated.filter(d => d.workspaceId === wsId));
   };
 
   const handleEditDetalle = (updatedDetalle) => {
@@ -155,25 +209,24 @@ export default function App() {
     deleteItem('DETALLES', 'id', targetIdStr);
     deleteItem('CONSULTAS', 'detalleId', targetIdStr);
     deleteItem('INVESTIGACIONES_IA', 'detalleId', targetIdStr);
-
     setDetalles(prev => prev.filter(d => String(d.id || d.detalleId || '').trim() !== targetIdStr));
     setConsultas(prev => prev.filter(c => String(c.detalleId || '').trim() !== targetIdStr));
     setInvestigacionesIa(prev => prev.filter(i => String(i.detalleId || '').trim() !== targetIdStr));
   };
 
   const handleAddConsulta = (newConsulta) => {
-    const updated = addItem('CONSULTAS', newConsulta);
-    setConsultas(updated);
+    const updated = addItem('CONSULTAS', { ...newConsulta, workspaceId: wsId });
+    setConsultas(updated.filter(c => c.workspaceId === wsId));
   };
 
   const handleEditConsulta = (updatedConsulta) => {
     const updated = updateItem('CONSULTAS', updatedConsulta);
-    setConsultas(updated);
+    setConsultas(updated.filter(c => c.workspaceId === wsId));
   };
 
   const handleAddAnexo = (newAnx) => {
-    const updated = addItem('ANEXOS', newAnx);
-    setAnexos(updated);
+    const updated = addItem('ANEXOS', { ...newAnx, workspaceId: wsId });
+    setAnexos(updated.filter(a => a.workspaceId === wsId));
   };
 
   const handleDeleteAnexo = (anexoId) => {
@@ -183,18 +236,18 @@ export default function App() {
   };
 
   const handleAddNotaLicitacion = (newNota) => {
-    const updated = addItem('NOTAS_LICITACION', newNota);
-    setNotasLicitacion(updated);
+    const updated = addItem('NOTAS_LICITACION', { ...newNota, workspaceId: wsId });
+    setNotasLicitacion(updated.filter(n => n.workspaceId === wsId));
   };
 
   const handleAddInvestigacionIa = (newInv) => {
-    const updated = addItem('INVESTIGACIONES_IA', newInv);
-    setInvestigacionesIa(updated);
+    const updated = addItem('INVESTIGACIONES_IA', { ...newInv, workspaceId: wsId });
+    setInvestigacionesIa(updated.filter(i => i.workspaceId === wsId));
   };
 
   const handleAddCotizacionVersion = (newCot) => {
-    const updated = addItem('COTIZACIONES', newCot);
-    setCotizaciones(updated);
+    const updated = addItem('COTIZACIONES', { ...newCot, workspaceId: wsId });
+    setCotizaciones(updated.filter(c => c.workspaceId === wsId));
   };
 
   const handleDeleteConsulta = (consultaId) => {
@@ -226,63 +279,80 @@ export default function App() {
   };
 
   const handleSaveUsuario = (userObj) => {
-    const existingIndex = usuarios.findIndex(u => u.email.toLowerCase() === userObj.email.toLowerCase());
+    // Inject workspaceId if not present
+    const userWithWs = userObj.workspaceId ? userObj : { ...userObj, workspaceId: wsId };
+    const allUsuarios = getData('USUARIOS');
+    const existingIndex = allUsuarios.findIndex(u => u.email.toLowerCase() === userWithWs.email.toLowerCase());
     let updated = [];
     if (existingIndex >= 0) {
-      updated = [...usuarios];
-      updated[existingIndex] = userObj;
+      updated = [...allUsuarios];
+      updated[existingIndex] = userWithWs;
     } else {
-      updated = [...usuarios, userObj];
+      updated = [...allUsuarios, userWithWs];
     }
     saveData('USUARIOS', updated);
-    setUsuarios(updated);
+    setUsuarios(updated.filter(u => u.workspaceId === wsId || u.workspaceId === null));
   };
 
   const handleToggleUsuarioActivo = (email) => {
-    const updated = usuarios.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, activo: !u.activo } : u);
+    const allUsuarios = getData('USUARIOS');
+    const updated = allUsuarios.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, activo: !u.activo } : u);
     saveData('USUARIOS', updated);
-    setUsuarios(updated);
+    setUsuarios(updated.filter(u => u.workspaceId === wsId || u.workspaceId === null));
   };
 
   const handleDeleteUsuario = (email) => {
     if (email.toLowerCase() === 'josealarconv@gmail.com') return;
-    const updated = usuarios.filter(u => u.email.toLowerCase() !== email.toLowerCase());
+    const allUsuarios = getData('USUARIOS');
+    const updated = allUsuarios.filter(u => u.email.toLowerCase() !== email.toLowerCase());
     saveData('USUARIOS', updated);
-    setUsuarios(updated);
+    setUsuarios(updated.filter(u => u.workspaceId === wsId || u.workspaceId === null));
   };
 
   const handleSavePerfil = (perfilObj) => {
-    const existingIndex = perfiles.findIndex(p => p.id === perfilObj.id);
+    const perfilWithWs = perfilObj.workspaceId ? perfilObj : { ...perfilObj, workspaceId: wsId };
+    const allPerfiles = getData('PERFILES');
+    const existingIndex = allPerfiles.findIndex(p => p.id === perfilWithWs.id);
     let updated = [];
     if (existingIndex >= 0) {
-      updated = [...perfiles];
-      updated[existingIndex] = perfilObj;
+      updated = [...allPerfiles];
+      updated[existingIndex] = perfilWithWs;
     } else {
-      updated = [...perfiles, perfilObj];
+      updated = [...allPerfiles, perfilWithWs];
     }
     saveData('PERFILES', updated);
-    setPerfiles(updated);
+    setPerfiles(updated.filter(p => p.workspaceId === wsId || p.workspaceId === null));
   };
 
   const handleDeletePerfil = (perfilId) => {
-    if (['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(perfilId)) return;
-    if (usuarios.some(u => u.perfilId === perfilId)) return;
-    const updated = perfiles.filter(p => p.id !== perfilId);
+    if (perfilId === 'PRF-SUPERADMIN') return;
+    const allPerfiles = getData('PERFILES');
+    const targetPerfil = allPerfiles.find(p => p.id === perfilId);
+    if (targetPerfil?.esProtegido) return;
+    const allUsuarios = getData('USUARIOS');
+    if (allUsuarios.some(u => u.perfilId === perfilId)) return;
+    const updated = allPerfiles.filter(p => p.id !== perfilId);
     saveData('PERFILES', updated);
-    setPerfiles(updated);
+    setPerfiles(updated.filter(p => p.workspaceId === wsId || p.workspaceId === null));
   };
 
   const handleAddCliente = (newCli) => {
-    const updated = addItem('CLIENTES', newCli);
-    setClientes(updated);
+    const updated = addItem('CLIENTES', { ...newCli, workspaceId: wsId });
+    setClientes(updated.filter(c => c.workspaceId === wsId));
   };
 
   const handleAddProveedor = (newPrv) => {
-    const updated = addItem('PROVEEDORES', newPrv);
-    setProveedores(updated);
+    const updated = addItem('PROVEEDORES', { ...newPrv, workspaceId: wsId });
+    setProveedores(updated.filter(p => p.workspaceId === wsId));
   };
 
   const handleSaveConfig = (newConfig) => {
+    // Save config into the active workspace
+    if (activeWs) {
+      updateWorkspace(activeWs.id, { config: newConfig });
+      setActiveWs(prev => prev ? { ...prev, config: newConfig } : prev);
+    }
+    // Legacy compat
     saveData('CONFIGURACION', newConfig);
     setConfiguracion(newConfig);
   };
@@ -309,6 +379,9 @@ export default function App() {
           anexos: anexos.length,
           usuarios: usuarios.length
         }}
+        activeWorkspace={activeWs}
+        allWorkspaces={allWorkspaces}
+        onWorkspaceSwitch={handleWorkspaceSwitch}
         onLogout={() => setCurrentUser(null)}
       />
 
@@ -406,8 +479,10 @@ export default function App() {
           />
         )}
 
-        {activeView === 'usuarios' && (
-          <UsuariosPerfilesView
+        {activeView === 'configuracion' && (
+          <ConfiguracionView
+            config={configuracion}
+            onSaveConfig={handleSaveConfig}
             usuarios={usuarios}
             perfiles={perfiles}
             onSaveUsuario={handleSaveUsuario}
@@ -415,13 +490,9 @@ export default function App() {
             onDeletePerfil={handleDeletePerfil}
             onToggleUsuarioActivo={handleToggleUsuarioActivo}
             onDeleteUsuario={handleDeleteUsuario}
-          />
-        )}
-
-        {activeView === 'configuracion' && (
-          <ConfiguracionView
-            config={configuracion}
-            onSaveConfig={handleSaveConfig}
+            activeWorkspace={activeWs}
+            allWorkspaces={allWorkspaces}
+            onWorkspaceSwitch={handleWorkspaceSwitch}
           />
         )}
       </main>

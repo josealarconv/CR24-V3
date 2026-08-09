@@ -13,10 +13,12 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
-  LogOut
+  LogOut,
+  Layers,
+  ChevronDown
 } from 'lucide-react';
 import { ASSETS } from '../../config/assets';
-import { getActiveUser, getUserProfile, logout } from '../../services/authService';
+import { getActiveUser, getUserProfile, isCreator, logout } from '../../services/authService';
 
 export default function Header({
   activeView,
@@ -26,12 +28,16 @@ export default function Header({
   selectedMonth,
   setSelectedMonth,
   counts = {},
+  activeWorkspace,
+  allWorkspaces = [],
+  onWorkspaceSwitch,
   onLogout
 }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('Sincronizado');
   const [activeUser, setActiveUser] = useState(getActiveUser());
   const [userProfile, setUserProfile] = useState(getUserProfile(activeUser));
+  const [showWsDropdown, setShowWsDropdown] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -53,14 +59,26 @@ export default function Header({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('auth-state-changed', handleAuthChange);
+    window.addEventListener('workspace-changed', handleAuthChange);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('auth-state-changed', handleAuthChange);
+      window.removeEventListener('workspace-changed', handleAuthChange);
     };
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowWsDropdown(false);
+    if (showWsDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showWsDropdown]);
+
+  // Navigation items — "Usuarios y Acceso" removed, merged into Configuración
   const navItems = [
     { id: 'licitaciones', label: 'Licitaciones', icon: FileText, count: counts.licitaciones, module: 'licitaciones' },
     { id: 'clientes', label: 'Clientes', icon: Users, count: counts.clientes, module: 'clientes' },
@@ -68,9 +86,11 @@ export default function Header({
     { id: 'consultas', label: 'Consultas de Precios', icon: DollarSign, count: counts.consultas, module: 'consultas' },
     { id: 'cotizaciones', label: 'Cotizaciones PDF', icon: FileCheck, count: counts.cotizaciones, module: 'cotizaciones' },
     { id: 'anexos', label: 'Anexos', icon: Paperclip, count: counts.anexos, module: 'anexos' },
-    { id: 'usuarios', label: 'Usuarios y Acceso', icon: ShieldCheck, count: counts.usuarios, module: 'usuarios' },
     { id: 'configuracion', label: 'Configuración', icon: Settings, module: 'configuracion' }
   ];
+
+  const workspaceName = activeWorkspace?.config?.empresa || activeWorkspace?.nombre || ASSETS.COMPANY_NAME;
+  const userIsCreator = isCreator();
 
   return (
     <header className="bg-zinc-950 border-b border-zinc-900 sticky top-0 z-30 shadow-md w-full">
@@ -94,16 +114,68 @@ export default function Header({
                   {ASSETS.APP_VERSION}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 hidden sm:block">
-                {ASSETS.COMPANY_NAME}
+              <p className="text-[11px] text-zinc-400 hidden sm:block truncate max-w-[300px]">
+                {workspaceName}
               </p>
             </div>
           </div>
 
-
-
-          {/* Network Status, Active User Badge & Logout (Right Justified, No Company Logo) */}
+          {/* Right Side: Workspace Selector + Network + User + Logout */}
           <div className="flex items-center space-x-3 justify-end shrink-0">
+
+            {/* Workspace Selector (Creator only, multiple workspaces) */}
+            {userIsCreator && allWorkspaces.length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowWsDropdown(!showWsDropdown);
+                  }}
+                  className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Cambiar Espacio de Trabajo"
+                >
+                  <Layers className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="hidden sm:inline font-semibold truncate max-w-[160px]">
+                    {activeWorkspace?.nombre || 'Workspace'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-zinc-400" />
+                </button>
+
+                {showWsDropdown && (
+                  <div className="absolute right-0 mt-1 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
+                    <div className="px-3 py-2 border-b border-zinc-800">
+                      <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Espacios de Trabajo</span>
+                    </div>
+                    {allWorkspaces.map(ws => (
+                      <button
+                        key={ws.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onWorkspaceSwitch(ws.id);
+                          setShowWsDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2.5 text-xs hover:bg-zinc-800 transition-colors cursor-pointer flex items-center justify-between ${
+                          ws.id === activeWorkspace?.id ? 'bg-zinc-800/60 border-l-2 border-blue-400' : ''
+                        }`}
+                      >
+                        <div>
+                          <span className={`font-semibold block ${ws.id === activeWorkspace?.id ? 'text-blue-400' : 'text-zinc-200'}`}>
+                            {ws.nombre}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 font-mono">
+                            {ws.plan} • {ws.id}
+                          </span>
+                        </div>
+                        {ws.id === activeWorkspace?.id && (
+                          <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Connection Status Badge */}
             <div
               className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border ${
