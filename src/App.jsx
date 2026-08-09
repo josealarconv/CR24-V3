@@ -461,6 +461,7 @@ export default function App() {
               onEditLicitacion={handleEditLicitacion}
               onDeleteLicitacion={handleDeleteLicitacion}
               onAddAnexo={handleAddAnexo}
+              onAddCliente={handleAddCliente}
             />
           )
         )}

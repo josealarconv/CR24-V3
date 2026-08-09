@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Trash2, Paperclip, X, Upload, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Trash2, Paperclip, X, Upload, Image as ImageIcon, AlertTriangle, UserPlus, AlertCircle } from 'lucide-react';
 import { Button, Badge, Card, EmptyState, Modal, Input } from '../ui/Components';
 
 export default function LicitacionesTableView({
@@ -17,7 +17,8 @@ export default function LicitacionesTableView({
   onAddLicitacion,
   onEditLicitacion,
   onDeleteLicitacion,
-  onAddAnexo
+  onAddAnexo,
+  onAddCliente
 }) {
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
@@ -59,6 +60,12 @@ export default function LicitacionesTableView({
   const [notas, setNotas] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Inline client creation
+  const [showNewClienteModal, setShowNewClienteModal] = useState(false);
+  const [newClienteNombre, setNewClienteNombre] = useState('');
+  const [newClienteRut, setNewClienteRut] = useState('');
+  const [newClienteError, setNewClienteError] = useState('');
 
   const getClienteNombre = (id) => {
     const cli = clientes.find(c => c.id === id);
@@ -434,17 +441,40 @@ export default function LicitacionesTableView({
             <label className="block text-xs font-semibold text-zinc-200 mb-1">
               Cliente Solicitante <span className="text-red-400 font-bold">*</span>
             </label>
-            <select
-              value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
-              required
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-blue-500 font-sans"
-            >
-              <option value="" disabled>Seleccione un cliente...</option>
-              {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nombre} ({c.rut})</option>
-              ))}
-            </select>
+            <div className="flex items-center space-x-2">
+              <select
+                value={clienteId}
+                onChange={(e) => setClienteId(e.target.value)}
+                required
+                className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-blue-500 font-sans"
+              >
+                <option value="" disabled>Seleccione un cliente...</option>
+                {clientes.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre} ({c.rut})</option>
+                ))}
+              </select>
+              {onAddCliente && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewClienteNombre('');
+                    setNewClienteRut('');
+                    setNewClienteError('');
+                    setShowNewClienteModal(true);
+                  }}
+                  className="p-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer shrink-0"
+                  title="Crear Cliente Rápido"
+                >
+                  <UserPlus className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {clientes.length === 0 && (
+              <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                No hay clientes registrados. Crea uno con el botón <UserPlus className="w-3 h-3 inline" />.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -648,6 +678,90 @@ export default function LicitacionesTableView({
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Confirmar Eliminar</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* QUICK CLIENT CREATION MODAL */}
+      <Modal
+        isOpen={showNewClienteModal}
+        onClose={() => setShowNewClienteModal(false)}
+        title="Crear Cliente Rápido"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-200 mb-1">
+              Nombre / Razón Social <span className="text-red-400 font-bold">*</span>
+            </label>
+            <Input
+              type="text"
+              value={newClienteNombre}
+              onChange={(e) => setNewClienteNombre(e.target.value)}
+              placeholder="Ej: Empresa ABC S.A."
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-zinc-200 mb-1">
+              RUT <span className="text-red-400 font-bold">*</span>
+            </label>
+            <Input
+              type="text"
+              value={newClienteRut}
+              onChange={(e) => setNewClienteRut(e.target.value)}
+              placeholder="Ej: 76.123.456-7"
+            />
+          </div>
+
+          {newClienteError && (
+            <div className="flex items-start space-x-2 p-2 bg-red-950/60 border border-red-800/80 rounded-lg text-xs text-red-300">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{newClienteError}</span>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" onClick={() => setShowNewClienteModal(false)}>
+              <X className="w-3.5 h-3.5" />
+              <span>Cancelar</span>
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                const nombre = newClienteNombre.trim();
+                const rut = newClienteRut.trim();
+                if (!nombre) {
+                  setNewClienteError('El nombre del cliente es obligatorio.');
+                  return;
+                }
+                if (!rut) {
+                  setNewClienteError('El RUT del cliente es obligatorio.');
+                  return;
+                }
+                // Check duplicates
+                if (clientes.some(c => c.rut.toLowerCase() === rut.toLowerCase())) {
+                  setNewClienteError('Ya existe un cliente con ese RUT.');
+                  return;
+                }
+                const newId = 'CLI-' + Date.now().toString(36).toUpperCase();
+                const newCliente = {
+                  id: newId,
+                  nombre,
+                  rut,
+                  direccion: '',
+                  telefono: '',
+                  email: '',
+                  contacto: ''
+                };
+                onAddCliente(newCliente);
+                setClienteId(newId);
+                setShowNewClienteModal(false);
+              }}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Crear y Seleccionar</span>
             </Button>
           </div>
         </div>
