@@ -119,7 +119,7 @@ export default function App() {
   };
 
   const handleDeleteLicitacion = (licId) => {
-    const updated = deleteItem('LICITACIONES', licId);
+    const updated = deleteItem('LICITACIONES', 'id', licId);
     setLicitaciones(updated);
     if (selectedLicitacion && selectedLicitacion.id === licId) {
       setSelectedLicitacion(null);
@@ -146,8 +146,14 @@ export default function App() {
   };
 
   const handleDeleteDetalle = (detalleId) => {
-    const updated = deleteItem('DETALLES', detalleId);
-    setDetalles(updated);
+    if (!detalleId) return;
+    const updatedDetalles = deleteItem('DETALLES', 'id', detalleId);
+    const updatedConsultas = deleteItem('CONSULTAS', 'detalleId', detalleId);
+    const updatedInvestigaciones = deleteItem('INVESTIGACIONES_IA', 'detalleId', detalleId);
+
+    setDetalles(updatedDetalles);
+    setConsultas(updatedConsultas);
+    setInvestigacionesIa(updatedInvestigaciones);
   };
 
   const handleAddConsulta = (newConsulta) => {
@@ -166,7 +172,7 @@ export default function App() {
   };
 
   const handleDeleteAnexo = (anexoId) => {
-    const updated = deleteItem('ANEXOS', anexoId);
+    const updated = deleteItem('ANEXOS', 'id', anexoId);
     setAnexos(updated);
   };
 
