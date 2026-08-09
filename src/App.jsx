@@ -296,14 +296,14 @@ export default function App() {
       updated = [...allUsuarios, userWithWs];
     }
     saveData('USUARIOS', updated);
-    setUsuarios(updated.filter(u => u.workspaceId === wsId || u.workspaceId === null));
+    setUsuarios(updated.filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null)));
   };
 
   const handleToggleUsuarioActivo = (email) => {
     const allUsuarios = getData('USUARIOS');
     const updated = allUsuarios.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, activo: !u.activo } : u);
     saveData('USUARIOS', updated);
-    setUsuarios(updated.filter(u => u.workspaceId === wsId || u.workspaceId === null));
+    setUsuarios(updated.filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null)));
   };
 
   const handleDeleteUsuario = (email) => {
@@ -311,7 +311,7 @@ export default function App() {
     const allUsuarios = getData('USUARIOS');
     const updated = allUsuarios.filter(u => u.email.toLowerCase() !== email.toLowerCase());
     saveData('USUARIOS', updated);
-    setUsuarios(updated.filter(u => u.workspaceId === wsId || u.workspaceId === null));
+    setUsuarios(updated.filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null)));
   };
 
   const handleSavePerfil = (perfilObj) => {
@@ -326,7 +326,7 @@ export default function App() {
       updated = [...allPerfiles, perfilWithWs];
     }
     saveData('PERFILES', updated);
-    setPerfiles(updated.filter(p => p.workspaceId === wsId || p.workspaceId === null));
+    setPerfiles(updated.filter(p => p.workspaceId === wsId || (wsId === 'WS-CREATOR' && p.workspaceId === null)));
   };
 
   const handleDeletePerfil = (perfilId) => {
@@ -338,7 +338,7 @@ export default function App() {
     if (allUsuarios.some(u => u.perfilId === perfilId)) return;
     const updated = allPerfiles.filter(p => p.id !== perfilId);
     saveData('PERFILES', updated);
-    setPerfiles(updated.filter(p => p.workspaceId === wsId || p.workspaceId === null));
+    setPerfiles(updated.filter(p => p.workspaceId === wsId || (wsId === 'WS-CREATOR' && p.workspaceId === null)));
   };
 
   const handleAddCliente = (newCli) => {
