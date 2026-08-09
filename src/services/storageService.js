@@ -162,8 +162,21 @@ export function addItem(key, item) {
   return updated;
 }
 
-export function updateItem(key, idField, idValue, newFields) {
+export function updateItem(key, param1, param2, param3) {
   const current = getData(key);
+  let idField = 'id';
+  let idValue = param1;
+  let newFields = param2;
+
+  if (param3 !== undefined) {
+    idField = param1;
+    idValue = param2;
+    newFields = param3;
+  } else if (typeof param1 === 'object' && param1 !== null) {
+    idValue = param1.id;
+    newFields = param1;
+  }
+
   const updated = current.map(item =>
     item[idField] === idValue ? { ...item, ...newFields } : item
   );
@@ -173,7 +186,15 @@ export function updateItem(key, idField, idValue, newFields) {
 
 export function deleteItem(key, idField, idValue) {
   const current = getData(key);
-  const updated = current.filter(item => item[idField] !== idValue);
+  let field = idField;
+  let val = idValue;
+
+  if (val === undefined) {
+    field = 'id';
+    val = idField;
+  }
+
+  const updated = current.filter(item => item[field] !== val);
   saveData(key, updated);
   return updated;
 }
