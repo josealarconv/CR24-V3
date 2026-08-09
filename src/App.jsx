@@ -19,7 +19,9 @@ import {
   updateItem,
   deleteItem,
   getWorkspaces,
-  updateWorkspace
+  addWorkspace,
+  updateWorkspace,
+  deleteWorkspace
 } from './services/storageService';
 import {
   getActiveUser,
@@ -357,6 +359,28 @@ export default function App() {
     setConfiguracion(newConfig);
   };
 
+  // ============================================================
+  // WORKSPACE CRUD (Creator only)
+  // ============================================================
+  const handleAddWorkspace = (wsObj) => {
+    addWorkspace(wsObj);
+    refreshWorkspace();
+  };
+
+  const handleUpdateWorkspace = (wsId, updates) => {
+    updateWorkspace(wsId, updates);
+    refreshWorkspace();
+  };
+
+  const handleDeleteWorkspaceAction = (wsId) => {
+    deleteWorkspace(wsId);
+    // If we just deleted the active workspace, switch to creator's
+    if (wsId === getActiveWorkspaceId()) {
+      setActiveWorkspace('WS-CREATOR');
+    }
+    refreshWorkspace();
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white w-full">
       {/* 100% Screen Width Header */}
@@ -493,6 +517,9 @@ export default function App() {
             activeWorkspace={activeWs}
             allWorkspaces={allWorkspaces}
             onWorkspaceSwitch={handleWorkspaceSwitch}
+            onAddWorkspace={handleAddWorkspace}
+            onUpdateWorkspace={handleUpdateWorkspace}
+            onDeleteWorkspace={handleDeleteWorkspaceAction}
           />
         )}
       </main>
