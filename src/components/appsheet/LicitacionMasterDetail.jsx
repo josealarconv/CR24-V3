@@ -27,6 +27,7 @@ import {
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
 import { investigarProductoConGemini } from '../../services/geminiService';
+import { deleteItem } from '../../services/storageService';
 import { Button, Badge, Card, Modal, Input } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
@@ -150,8 +151,14 @@ export default function LicitacionMasterDetail({
 
   const handleConfirmDeleteItem = () => {
     const targetId = deletingItemDetail?.item?.id || deletingItemDetail?.item?.detalleId || deletingItemDetail?.id;
-    if (targetId && onDeleteDetalle) {
-      onDeleteDetalle(targetId);
+    if (targetId) {
+      if (onDeleteDetalle) {
+        onDeleteDetalle(targetId);
+      }
+      deleteItem('DETALLES', 'id', targetId);
+      deleteItem('CONSULTAS', 'detalleId', targetId);
+      deleteItem('INVESTIGACIONES_IA', 'detalleId', targetId);
+      window.dispatchEvent(new Event('storage-update'));
     }
     setDeletingItemDetail(null);
   };
