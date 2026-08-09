@@ -1079,28 +1079,36 @@ export default function LicitacionMasterDetail({
                     )}
 
                     {/* ACCORDION EXPAND BUTTON */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (expandedItemId === item.id) {
-                          setExpandedItemId(null);
-                        } else {
-                          setExpandedItemId(item.id);
-                          setActiveItemSubTab('consultas');
-                        }
-                      }}
-                      className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        expandedItemId === item.id
-                          ? 'bg-blue-950/60 border border-blue-800/60 text-blue-300'
-                          : 'bg-zinc-800/40 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-                      }`}
-                    >
-                      {expandedItemId === item.id ? (
-                        <><ChevronUp className="w-3.5 h-3.5" /><span>Contraer Detalle</span></>
-                      ) : (
-                        <><ChevronDown className="w-3.5 h-3.5" /><span>Consultas ({itemConsultas.length}) · Anexos ({itemAnexos.length}) · IA ({investigacionesIa.filter(i => i.detalleId === item.id).length})</span></>
-                      )}
-                    </button>
+                    {(() => {
+                      const iaCount = investigacionesIa.filter(i => i.detalleId === item.id).length;
+                      const hasData = itemConsultas.length > 0 || itemAnexos.length > 0 || iaCount > 0;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (expandedItemId === item.id) {
+                              setExpandedItemId(null);
+                            } else {
+                              setExpandedItemId(item.id);
+                              setActiveItemSubTab(iaCount > 0 ? 'ia_history' : 'consultas');
+                            }
+                          }}
+                          className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                            expandedItemId === item.id
+                              ? 'bg-blue-950/60 border border-blue-800/60 text-blue-300'
+                              : hasData
+                                ? 'bg-indigo-950/40 border border-indigo-800/50 text-indigo-300 hover:bg-indigo-950/60'
+                                : 'bg-zinc-800/40 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                          }`}
+                        >
+                          {expandedItemId === item.id ? (
+                            <><ChevronUp className="w-3.5 h-3.5" /><span>Contraer Detalle</span></>
+                          ) : (
+                            <><ChevronDown className="w-3.5 h-3.5" /><span>Consultas ({itemConsultas.length}) · Anexos ({itemAnexos.length}) · IA ({iaCount})</span></>
+                          )}
+                        </button>
+                      );
+                    })()}
 
                     {/* ACCORDION EXPANDED CONTENT */}
                     {expandedItemId === item.id && (
@@ -1206,28 +1214,39 @@ export default function LicitacionMasterDetail({
                                       )}
                                     </div>
                                     {inv.resultadoJSON && (
+                                      (() => {
+                                        // Normalize old data formats: some have .data nested, some have .resumenProducto instead of .resumenTecnico
+                                        const r = inv.resultadoJSON.data || inv.resultadoJSON;
+                                        const resumen = r.resumenTecnico || r.resumenProducto || r.resumen || '';
+                                        const specs = r.especificacionesTecnicas || r.especificaciones || [];
+                                        const locales = r.proveedoresLocalesChilenos || r.proveedoresLocales || [];
+                                        const intl = r.proveedoresInternacionales || [];
+                                        const rango = r.precioRangoMercado || r.rangoPrecios || r.rango || '';
+                                        return (
                                       <div className="space-y-1.5 text-zinc-300 text-[11px]">
-                                        <p><strong>Resumen:</strong> {inv.resultadoJSON.resumenTecnico}</p>
-                                        {inv.resultadoJSON.especificacionesTecnicas?.length > 0 && (
+                                        {resumen && <p><strong>Resumen:</strong> {resumen}</p>}
+                                        {specs.length > 0 && (
                                           <div>
                                             <strong className="text-zinc-200">Especificaciones:</strong>
                                             <ul className="list-disc list-inside text-zinc-400 mt-0.5">
-                                              {inv.resultadoJSON.especificacionesTecnicas.map((s, i) => <li key={i}>{s}</li>)}
+                                              {specs.map((s, i) => <li key={i}>{s}</li>)}
                                             </ul>
                                           </div>
                                         )}
                                         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-800/60">
                                           <div>
                                             <strong className="text-zinc-200">Proveedores Locales:</strong>
-                                            <ul className="text-zinc-400 mt-0.5">{inv.resultadoJSON.proveedoresLocalesChilenos?.map((p, i) => <li key={i}>• {p}</li>)}</ul>
+                                            <ul className="text-zinc-400 mt-0.5">{locales.map((p, i) => <li key={i}>• {p}</li>)}</ul>
                                           </div>
                                           <div>
                                             <strong className="text-zinc-200">Internacionales:</strong>
-                                            <ul className="text-zinc-400 mt-0.5">{inv.resultadoJSON.proveedoresInternacionales?.map((p, i) => <li key={i}>• {p}</li>)}</ul>
+                                            <ul className="text-zinc-400 mt-0.5">{intl.map((p, i) => <li key={i}>• {p}</li>)}</ul>
                                           </div>
                                         </div>
-                                        <p className="font-mono text-emerald-400 pt-1"><strong>Rango:</strong> {inv.resultadoJSON.precioRangoMercado}</p>
+                                        {rango && <p className="font-mono text-emerald-400 pt-1"><strong>Rango:</strong> {rango}</p>}
                                       </div>
+                                        );
+                                      })()
                                     )}
                                   </div>
                                 ))}
@@ -1527,7 +1546,7 @@ export default function LicitacionMasterDetail({
         title={editingDetalle ? `Editar Producto / Requerimiento` : `Registrar Nuevo Producto`}
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSaveProductoSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSaveProductoSubmit} className="space-y-3.5 text-xs max-h-[75vh] overflow-y-auto pr-1">
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1">Descripción del Producto / Insumo *</label>
             <Input
