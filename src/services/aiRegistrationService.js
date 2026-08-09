@@ -56,3 +56,56 @@ export async function analizarDocumentoLicitacion({ file, textContent }) {
     };
   }
 }
+
+/**
+ * Analiza una cotización de proveedor usando AI (Gemini).
+ * Soporta modo texto o archivo.
+ *
+ * @param {Object} options
+ * @param {File} [options.file] - Archivo a analizar
+ * @param {string} [options.textContent] - Texto de la cotización
+ * @returns {Promise<{success: boolean, data: Object, error?: string}>}
+ */
+export async function analizarCotizacionProveedor({ file, textContent }) {
+  try {
+    const body = {};
+
+    if (textContent && textContent.trim().length > 20) {
+      body.textContent = textContent.trim();
+    } else if (file) {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+      body.fileData = base64Data;
+      body.fileType = file.type;
+      body.fileName = file.name;
+    } else {
+      throw new Error('Se requiere texto o archivo para analizar.');
+    }
+
+    const response = await fetch('/api/analyze-quote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.details || errData.error || `API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return { success: true, data: result };
+
+  } catch (error) {
+    console.error('Error analyzing quote:', error);
+    return {
+      success: false,
+      error: error.message || 'Error desconocido al analizar la cotización.',
+      data: null
+    };
+  }
+}

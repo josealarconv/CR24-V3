@@ -27,12 +27,14 @@ import {
   UserPlus,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
 import { investigarProductoConGemini } from '../../services/geminiService';
 import { deleteItem, updateItem, addItem } from '../../services/storageService';
+import { analizarCotizacionProveedor } from '../../services/aiRegistrationService';
 import { Button, Badge, Card, Modal, Input, EmptyState } from '../ui/Components';
 import { ASSETS } from '../../config/assets';
 
@@ -112,6 +114,14 @@ export default function LicitacionMasterDetail({
 
   // Consulta delete confirmation
   const [deletingConsulta, setDeletingConsulta] = useState(null);
+
+  // AI Quote Analysis
+  const [quoteAiTextContent, setQuoteAiTextContent] = useState('');
+  const [quoteAiFile, setQuoteAiFile] = useState(null);
+  const [quoteAiInputMode, setQuoteAiInputMode] = useState('text');
+  const [quoteAiLoading, setQuoteAiLoading] = useState(false);
+  const [quoteAiError, setQuoteAiError] = useState('');
+  const [quoteAiResult, setQuoteAiResult] = useState(null);
 
   // Inline provider creation from consulta modal
   const [showNewProveedorModal, setShowNewProveedorModal] = useState(false);
@@ -461,6 +471,10 @@ export default function LicitacionMasterDetail({
     setCostoAfexInput('0');
     setPorcentajeImpuestoInput('0');
     setPorcentajeMargenInput('25');
+    setQuoteAiResult(null);
+    setQuoteAiTextContent('');
+    setQuoteAiFile(null);
+    setQuoteAiError('');
     setShowConsultaModal(true);
   };
 
@@ -478,7 +492,55 @@ export default function LicitacionMasterDetail({
     setCostoAfexInput(cns.costoAfex || 0);
     setPorcentajeImpuestoInput(cns.porcentajeImpuesto || 0);
     setPorcentajeMargenInput(cns.porcentajeMargen !== undefined ? cns.porcentajeMargen : 25);
+    setQuoteAiResult(null);
+    setQuoteAiTextContent('');
+    setQuoteAiFile(null);
+    setQuoteAiError('');
     setShowConsultaModal(true);
+  };
+
+  const handleAnalyzeQuote = async () => {
+    if (quoteAiInputMode === 'text' && !quoteAiTextContent.trim()) {
+      setQuoteAiError('Por favor ingresa el texto de la cotización.');
+      return;
+    }
+    if (quoteAiInputMode === 'file' && !quoteAiFile) {
+      setQuoteAiError('Por favor selecciona un archivo.');
+      return;
+    }
+
+    setQuoteAiLoading(true);
+    setQuoteAiError('');
+    setQuoteAiResult(null);
+
+    const result = await analizarCotizacionProveedor({
+      file: quoteAiInputMode === 'file' ? quoteAiFile : null,
+      textContent: quoteAiInputMode === 'text' ? quoteAiTextContent : null
+    });
+
+    setQuoteAiLoading(false);
+
+    if (result.success) {
+      const d = result.data;
+      setQuoteAiResult(d);
+
+      if (d.proveedorNombre) {
+        const provNameLower = d.proveedorNombre.toLowerCase();
+        const found = proveedores.find(p => p.nombre.toLowerCase().includes(provNameLower) || provNameLower.includes(p.nombre.toLowerCase()));
+        if (found) {
+          setSelectedProveedorId(found.id);
+        }
+      }
+      if (d.moneda) setMonedaProveedorInput(d.moneda);
+      if (d.precioUnitario !== undefined && d.precioUnitario !== null) setPrecioBaseInput(String(d.precioUnitario));
+      if (d.cantidad !== undefined && d.cantidad !== null) setCantCotizadaInput(String(d.cantidad));
+      if (d.costoFlete !== undefined && d.costoFlete !== null) setCostoFleteInput(String(d.costoFlete));
+      if (d.costoInternacion !== undefined && d.costoInternacion !== null) setCostoInternacionInput(String(d.costoInternacion));
+      if (d.costoAfex !== undefined && d.costoAfex !== null) setCostoAfexInput(String(d.costoAfex));
+      if (d.porcentajeImpuesto !== undefined && d.porcentajeImpuesto !== null) setPorcentajeImpuestoInput(String(d.porcentajeImpuesto));
+    } else {
+      setQuoteAiError(result.error);
+    }
   };
 
   const handleSaveConsultaSubmit = (e) => {
@@ -1663,6 +1725,136 @@ export default function LicitacionMasterDetail({
           <p className="text-xs text-zinc-400 border-b border-zinc-800 pb-2">
             Ítem: <strong className="text-zinc-200">{selectedDetalle?.descripcion}</strong> (Req: {selectedDetalle?.cantidadRequerida || 1} u.)
           </p>
+
+          {/* AI Quote Analysis Section */}
+          <div className="bg-blue-900/10 border border-blue-900/30 rounded-lg p-3 space-y-3 mb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-blue-400">
+                <Sparkles className="w-4 h-4" />
+                <h4 className="text-xs font-semibold">Autocompletar con IA</h4>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setQuoteAiInputMode('text')}
+                  className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                    quoteAiInputMode === 'text' ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  <FileText className="w-3 h-3 inline-block mr-1" /> Texto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuoteAiInputMode('file')}
+                  className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                    quoteAiInputMode === 'file' ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  <Upload className="w-3 h-3 inline-block mr-1" /> Archivo
+                </button>
+              </div>
+            </div>
+
+            {quoteAiInputMode === 'text' ? (
+              <textarea
+                value={quoteAiTextContent}
+                onChange={(e) => setQuoteAiTextContent(e.target.value)}
+                placeholder="Pega aquí el texto de la cotización, correo, o detalles del proveedor..."
+                className="w-full h-20 p-2 bg-zinc-950/50 border border-zinc-800 rounded-lg text-xs text-zinc-300 resize-none focus:outline-none focus:border-blue-500/50"
+                disabled={quoteAiLoading}
+              />
+            ) : (
+              <div className="border border-dashed border-zinc-700 bg-zinc-950/50 rounded-lg p-3 text-center relative hover:bg-zinc-900/50 transition-colors">
+                <input
+                  type="file"
+                  onChange={(e) => setQuoteAiFile(e.target.files[0])}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={quoteAiLoading}
+                  accept=".pdf,.doc,.docx,.txt,image/*"
+                />
+                {quoteAiFile ? (
+                  <div className="flex items-center justify-center space-x-2 text-zinc-300">
+                    <FileCheck className="w-4 h-4 text-emerald-500" />
+                    <span className="text-xs truncate max-w-[200px]">{quoteAiFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuoteAiFile(null);
+                      }}
+                      className="p-1 hover:bg-zinc-800 rounded-full z-10 relative"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center space-y-1">
+                    <Upload className="w-4 h-4 text-zinc-500" />
+                    <span className="text-[10px] text-zinc-400">Click o arrastrar cotización aquí</span>
+                    <span className="text-[9px] text-zinc-500">PDF, Word, TXT o Imágenes</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {quoteAiError && (
+              <div className="text-red-400 text-[10px] bg-red-950/30 p-2 rounded flex items-start space-x-2">
+                <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                <span>{quoteAiError}</span>
+              </div>
+            )}
+
+            {quoteAiResult && (
+              <div className="text-emerald-400 text-[10px] bg-emerald-950/30 p-2 rounded flex flex-col space-y-1">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                  <span className="font-semibold">¡Datos extraídos! Formularios autocompletados.</span>
+                </div>
+                <div className="pl-5 text-zinc-400 grid grid-cols-2 gap-x-2">
+                  {quoteAiResult.proveedorNombre && <span>• Prov: {quoteAiResult.proveedorNombre}</span>}
+                  {quoteAiResult.precioUnitario !== undefined && <span>• Precio: {quoteAiResult.precioUnitario}</span>}
+                  {quoteAiResult.moneda && <span>• Moneda: {quoteAiResult.moneda}</span>}
+                  {quoteAiResult.cantidad && <span>• Cantidad: {quoteAiResult.cantidad}</span>}
+                  {quoteAiResult.plazoEntrega && <span className="col-span-2 truncate">• Plazo: {quoteAiResult.plazoEntrega}</span>}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2 pt-1">
+              {quoteAiResult && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuoteAiResult(null);
+                    setQuoteAiTextContent('');
+                    setQuoteAiFile(null);
+                  }}
+                  className="px-3 py-1.5 text-[10px] font-medium text-zinc-400 hover:text-white transition-colors"
+                  disabled={quoteAiLoading}
+                >
+                  Reiniciar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleAnalyzeQuote}
+                disabled={quoteAiLoading || (quoteAiInputMode === 'text' ? !quoteAiTextContent : !quoteAiFile)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 hover:text-blue-300 border border-blue-900/50 rounded-lg text-[10px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {quoteAiLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Analizando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    <span>Extraer Datos</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
