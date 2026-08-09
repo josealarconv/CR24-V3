@@ -424,7 +424,7 @@ export default function LicitacionesTableView({
         <form onSubmit={handleFormSubmit} className="space-y-4">
           {errorMsg && (
             <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-lg text-xs text-red-300 font-medium flex items-center space-x-2">
-              <span className="text-red-400 font-bold">⚠️</span>
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}

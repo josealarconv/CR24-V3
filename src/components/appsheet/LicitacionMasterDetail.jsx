@@ -359,7 +359,7 @@ export default function LicitacionMasterDetail({
     setEditingConsulta(null);
     setSelectedProveedorId(proveedores[0]?.id || '');
     setCantCotizadaInput(item.cantidadRequerida || 1);
-    setCantADespacharInput(item.cantidadRequerida || 1);
+    setCantADespacharInput(0);
     setMonedaProveedorInput(licitacion.moneda || 'CLP');
     setTasaCambioInput(950);
     setPrecioBaseInput('');
@@ -742,7 +742,7 @@ export default function LicitacionMasterDetail({
                             <h3 className="text-sm font-bold text-zinc-100 tracking-wide">{item.descripcion}</h3>
                             
                             <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-zinc-950 text-zinc-300 border border-zinc-800">
-                              📦 Requerido: {reqQty} u.
+                              Requerido: {reqQty} u.
                             </span>
 
                             {isFullyCovered && (
@@ -761,7 +761,7 @@ export default function LicitacionMasterDetail({
 
                             {!totalQtyDespachable && (
                               <span className="text-[10px] font-medium font-sans px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-500">
-                                ⚪ Sin Confirmar Proveedor
+                                Sin Confirmar Proveedor
                               </span>
                             )}
                           </div>
@@ -1454,10 +1454,10 @@ export default function LicitacionMasterDetail({
             </div>
           </div>
 
-          {/* Quantities: Cotizada vs A Despachar */}
+          {/* Quantities: Cotizada (Obligatorio) vs A Despachar (Opcional) */}
           <div className="grid grid-cols-2 gap-3 bg-zinc-950/60 p-2.5 rounded-lg border border-zinc-800">
             <div>
-              <label className="block text-xs font-semibold text-zinc-400 mb-1">Cantidad Cotizada Proveedor</label>
+              <label className="block text-xs font-semibold text-zinc-200 mb-1">Cantidad Cotizada Proveedor *</label>
               <Input
                 type="number"
                 min="1"
@@ -1468,14 +1468,14 @@ export default function LicitacionMasterDetail({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-emerald-400 mb-1">Cantidad a Despachar (Confirmada) *</label>
+              <label className="block text-xs font-semibold text-zinc-400 mb-1">Cantidad a Despachar (Opcional)</label>
               <Input
                 type="number"
-                min="1"
+                min="0"
                 value={cantADespacharInput}
                 onChange={(e) => setCantADespacharInput(e.target.value)}
-                className="border-emerald-800 text-emerald-300 font-bold"
-                required
+                placeholder="0 (Asignar al comprar)"
+                className="border-zinc-800 text-zinc-200"
               />
             </div>
           </div>
@@ -1484,7 +1484,7 @@ export default function LicitacionMasterDetail({
           {monedaProveedorInput !== licitacion.moneda && (
             <div className="bg-amber-950/30 p-2.5 rounded-lg border border-amber-800/60 space-y-1">
               <label className="block text-xs font-semibold text-amber-300">
-                Tasa de Cambio ({monedaProveedorInput} $\rightarrow$ {licitacion.moneda}) *
+                Tasa de Cambio ({monedaProveedorInput} a {licitacion.moneda}) *
               </label>
               <Input
                 type="number"

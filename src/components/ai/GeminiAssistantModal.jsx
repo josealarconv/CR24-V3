@@ -29,7 +29,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, initialQuery = '
     if (result.success) {
       setMessages(prev => [...prev, { sender: 'bot', text: result.text }]);
     } else {
-      setMessages(prev => [...prev, { sender: 'bot', text: `⚠️ Error: ${result.error}` }]);
+      setMessages(prev => [...prev, { sender: 'bot', text: `Error: ${result.error}` }]);
     }
   };
 
