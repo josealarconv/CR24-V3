@@ -365,6 +365,7 @@ export default function LicitacionMasterDetail({
       if (editingDetalle) {
         const updatedItem = {
           ...editingDetalle,
+          licitacionId: licitacion.id,
           descripcion: prodDesc.trim(),
           cantidadRequerida: parseInt(prodCantReq) || 1,
           cantidadACotizar: parseInt(prodCantReq) || 1,
