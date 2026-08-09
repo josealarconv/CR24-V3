@@ -16,12 +16,11 @@ export default function LicitacionesTableView({
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showNewModal, setShowNewModal] = useState(false);
 
-  // Clean Month Stepper List (Monthly Navigation Only)
+  // Clean Month Stepper List (Months Only, No "Todos los Registros")
   const monthsList = [
     { value: '2026-08', label: 'Agosto 2026' },
     { value: '2026-07', label: 'Julio 2026' },
-    { value: '2026-06', label: 'Junio 2026' },
-    { value: 'ALL', label: 'Todos los Registros' }
+    { value: '2026-06', label: 'Junio 2026' }
   ];
 
   const handlePrevMonth = () => {
@@ -96,6 +95,7 @@ export default function LicitacionesTableView({
   };
 
   const isSearchingGlobal = searchTerm.trim().length > 0;
+  const currentMonthIndex = monthsList.findIndex(m => m.value === selectedMonth);
 
   return (
     <div className="space-y-3 w-full">
@@ -124,14 +124,14 @@ export default function LicitacionesTableView({
             />
           </div>
 
-          {/* Contextual Month Navigation Controls (Clean Month Stepper) */}
+          {/* Contextual Month Navigation Controls (Clean Month Stepper Only) */}
           <div className={`flex items-center space-x-1 bg-zinc-900 border ${isSearchingGlobal ? 'border-amber-800/60 bg-amber-950/20' : 'border-zinc-800'} rounded-lg p-0.5 text-xs text-zinc-300 transition-colors`}>
             <button
               type="button"
               onClick={handlePrevMonth}
               className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
               title="Mes Anterior"
-              disabled={selectedMonth === 'ALL' || isSearchingGlobal}
+              disabled={currentMonthIndex >= monthsList.length - 1 || isSearchingGlobal}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
@@ -157,7 +157,7 @@ export default function LicitacionesTableView({
               onClick={handleNextMonth}
               className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 cursor-pointer disabled:opacity-40"
               title="Mes Siguiente"
-              disabled={selectedMonth === '2026-08' || isSearchingGlobal}
+              disabled={currentMonthIndex <= 0 || isSearchingGlobal}
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -166,7 +166,7 @@ export default function LicitacionesTableView({
           {/* Active Global Search Indicator */}
           {isSearchingGlobal && (
             <span className="text-[11px] font-medium text-amber-400 bg-amber-950/40 px-2 py-1 rounded-md border border-amber-800/60 flex items-center gap-1">
-              <span>Histórico Global</span>
+              <span>Búsqueda Global</span>
             </span>
           )}
 
@@ -201,7 +201,7 @@ export default function LicitacionesTableView({
       {filtered.length === 0 ? (
         <EmptyState
           title="Sin licitaciones para este período"
-          description={isSearchingGlobal ? `No se encontraron licitaciones que coincidan con "${searchTerm}".` : (selectedMonth === 'ALL' ? "No hay licitaciones registradas." : `No se encontraron licitaciones para ${selectedMonth}. Utiliza las flechas para consultar otro mes.`)}
+          description={isSearchingGlobal ? `No se encontraron licitaciones que coincidan con "${searchTerm}".` : `No se encontraron licitaciones para ${selectedMonth}. Utiliza las flechas para consultar otro mes.`}
           icon={FileText}
         />
       ) : (
