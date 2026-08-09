@@ -17,7 +17,11 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Eye,
+  Printer,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
@@ -40,6 +44,7 @@ export default function LicitacionMasterDetail({
   onAddDetalle,
   onAddConsulta,
   onAddAnexo,
+  onDeleteAnexo,
   onAddNotaLicitacion,
   onAddInvestigacionIa,
   onAddCotizacionVersion,
@@ -70,6 +75,55 @@ export default function LicitacionMasterDetail({
 
   // File Upload State
   const [uploading, setUploading] = useState(false);
+  const [viewingAnexoDetail, setViewingAnexoDetail] = useState(null);
+  const [deletingAnexoDetail, setDeletingAnexoDetail] = useState(null);
+
+  const isImageAnexo = (anexo) => {
+    if (!anexo) return false;
+    const type = (anexo.tipo || '').toLowerCase();
+    const url = (anexo.url || '').toLowerCase();
+    const name = (anexo.nombre || '').toLowerCase();
+    return (
+      type.startsWith('image/') ||
+      url.startsWith('data:image/') ||
+      name.endsWith('.png') ||
+      name.endsWith('.jpg') ||
+      name.endsWith('.jpeg') ||
+      name.endsWith('.webp') ||
+      name.endsWith('.gif') ||
+      name.endsWith('.svg')
+    );
+  };
+
+  const handlePrintAnexo = () => {
+    if (!viewingAnexoDetail) return;
+    const printWindow = window.open(viewingAnexoDetail.url, '_blank');
+    if (printWindow) {
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
+
+  const handleDownloadAnexo = (anexo) => {
+    if (!anexo) return;
+    const link = document.createElement('a');
+    link.href = anexo.url;
+    link.download = anexo.nombre || 'anexo_adjunto';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleConfirmDeleteAnexo = () => {
+    if (!deletingAnexoDetail || !onDeleteAnexo) return;
+    onDeleteAnexo(deletingAnexoDetail.id);
+    if (viewingAnexoDetail && viewingAnexoDetail.id === deletingAnexoDetail.id) {
+      setViewingAnexoDetail(null);
+    }
+    setDeletingAnexoDetail(null);
+  };
 
   // Status Enum Options
   const estatusList = [
@@ -717,30 +771,137 @@ export default function LicitacionMasterDetail({
               <p className="text-xs text-zinc-500 py-4 text-center">Sin anexos adjuntos.</p>
             ) : (
               <div className="space-y-2 w-full">
-                {anexos.map(a => (
-                  <div key={a.id} className="flex items-center justify-between p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-800 text-xs">
-                    <div className="flex items-center space-x-2.5">
-                      <Paperclip className="w-4 h-4 text-blue-400" />
-                      <div>
-                        <p className="font-medium text-zinc-200">{a.nombre}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono">{a.fecha}</p>
+                {anexos.map(a => {
+                  const imageFile = isImageAnexo(a);
+                  return (
+                    <div key={a.id} className="flex items-center justify-between p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-800 text-xs">
+                      <div className="flex items-center space-x-2.5">
+                        {imageFile ? (
+                          <ImageIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <Paperclip className="w-4 h-4 text-blue-400 shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-medium text-zinc-200">{a.nombre}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono">{a.fecha}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-1.5 font-sans">
+                        <button
+                          type="button"
+                          onClick={() => setViewingAnexoDetail(a)}
+                          className="px-2 py-1 rounded-lg bg-blue-950/60 border border-blue-800/80 text-blue-400 hover:bg-blue-900/80 flex items-center space-x-1 text-xs font-semibold cursor-pointer transition-all"
+                          title="Visualizar en pantalla"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAnexo(a)}
+                          className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors cursor-pointer"
+                          title="Descargar archivo"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+
+                        {onDeleteAnexo && (
+                          <button
+                            type="button"
+                            onClick={() => setDeletingAnexoDetail(a)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer"
+                            title="Eliminar anexo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </Card>
       )}
+
+      {/* Modal Visualizador Integrado de Anexos (PDF e Imágenes) */}
+      <Modal
+        isOpen={!!viewingAnexoDetail}
+        onClose={() => setViewingAnexoDetail(null)}
+        title={`Visualizador: ${viewingAnexoDetail?.nombre || 'Anexo'}`}
+        maxWidth="max-w-[92vw]"
+      >
+        <div className="space-y-3 w-full">
+          <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-mono">
+              {isImageAnexo(viewingAnexoDetail) ? 'Fotografía / Imagen' : 'Documento PDF'}
+            </span>
+
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="xs" onClick={handlePrintAnexo}>
+                <Printer className="w-3.5 h-3.5" />
+                <span>Imprimir</span>
+              </Button>
+
+              <Button variant="primary" size="xs" onClick={() => handleDownloadAnexo(viewingAnexoDetail)}>
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar</span>
+              </Button>
+
+              {onDeleteAnexo && viewingAnexoDetail && (
+                <Button variant="danger" size="xs" onClick={() => setDeletingAnexoDetail(viewingAnexoDetail)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {viewingAnexoDetail && (
+            isImageAnexo(viewingAnexoDetail) ? (
+              <div className="h-[78vh] flex items-center justify-center bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+                <img
+                  src={viewingAnexoDetail.url}
+                  alt={viewingAnexoDetail.nombre}
+                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl"
+                />
+              </div>
+            ) : (
+              <iframe
+                src={viewingAnexoDetail.url}
+                className="w-full h-[78vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
+                title="Visualizador de Documento"
+              />
+            )
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal Borrado Anexo */}
+      <Modal
+        isOpen={!!deletingAnexoDetail}
+        onClose={() => setDeletingAnexoDetail(null)}
+        title={`Eliminar Anexo: ${deletingAnexoDetail?.nombre || ''}`}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-300">
+            ¿Está seguro que desea eliminar permanentemente el archivo adjunto <strong className="text-zinc-100">{deletingAnexoDetail?.nombre}</strong>?
+          </p>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" onClick={() => setDeletingAnexoDetail(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleConfirmDeleteAnexo}>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Confirmar Eliminar</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Consulta de Precio (Costo Compuesto) */}
       <Modal

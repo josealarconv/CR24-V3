@@ -1,16 +1,68 @@
-import React from 'react';
-import { Paperclip, ExternalLink } from 'lucide-react';
-import { EmptyState } from '../ui/Components';
+import React, { useState } from 'react';
+import { Paperclip, Eye, Download, Printer, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
+import { EmptyState, Modal, Button, Badge } from '../ui/Components';
 
-export default function AnexosTableView({ anexos = [] }) {
+export default function AnexosTableView({ anexos = [], onDeleteAnexo }) {
+  const [viewingAnexo, setViewingAnexo] = useState(null);
+  const [deletingAnexo, setDeletingAnexo] = useState(null);
+
+  const isImage = (anexo) => {
+    if (!anexo) return false;
+    const type = (anexo.tipo || '').toLowerCase();
+    const url = (anexo.url || '').toLowerCase();
+    const name = (anexo.nombre || '').toLowerCase();
+    return (
+      type.startsWith('image/') ||
+      url.startsWith('data:image/') ||
+      name.endsWith('.png') ||
+      name.endsWith('.jpg') ||
+      name.endsWith('.jpeg') ||
+      name.endsWith('.webp') ||
+      name.endsWith('.gif') ||
+      name.endsWith('.svg')
+    );
+  };
+
+  const handlePrint = () => {
+    if (!viewingAnexo) return;
+    const printWindow = window.open(viewingAnexo.url, '_blank');
+    if (printWindow) {
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
+
+  const handleDownload = (anexo) => {
+    if (!anexo) return;
+    const link = document.createElement('a');
+    link.href = anexo.url;
+    link.download = anexo.nombre || 'anexo_adjunto';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingAnexo || !onDeleteAnexo) return;
+    onDeleteAnexo(deletingAnexo.id);
+    if (viewingAnexo && viewingAnexo.id === deletingAnexo.id) {
+      setViewingAnexo(null);
+    }
+    setDeletingAnexo(null);
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 backdrop-blur-sm">
         <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
           <Paperclip className="w-4 h-4 text-blue-400" />
           <span>Repositorio Maestro de Anexos y Documentos</span>
         </h1>
-        <p className="text-xs text-zinc-400 mt-0.5">Todos los archivos PDF y fotografías adjuntas a las licitaciones.</p>
+        <p className="text-xs text-zinc-400 mt-0.5">
+          Archivos PDF, bases técnicas y fotografías adjuntas a las licitaciones con visor integrado.
+        </p>
       </div>
 
       {anexos.length === 0 ? (
@@ -20,48 +72,161 @@ export default function AnexosTableView({ anexos = [] }) {
           icon={Paperclip}
         />
       ) : (
-        <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xs">
+        <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xs w-full">
           <table className="w-full text-left text-xs text-zinc-300">
             <thead className="bg-zinc-900/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
               <tr>
                 <th className="px-4 py-3">Nombre del Archivo</th>
-                <th className="px-4 py-3">Entidad Asoc.</th>
+                <th className="px-4 py-3">Referencia / Licitación</th>
                 <th className="px-4 py-3">Tipo</th>
                 <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3 text-right">Abrir</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60 font-mono">
-              {anexos.map((a) => (
-                <tr key={a.id} className="hover:bg-zinc-800/40 transition-colors">
-                  <td className="px-4 py-3 font-sans font-medium text-zinc-100">
-                    {a.nombre}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-400 uppercase font-sans">
-                    {a.entidad} ({a.entidadId})
-                  </td>
-                  <td className="px-4 py-3 text-zinc-400">
-                    {a.tipo || 'PDF/Imagen'}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-400">
-                    {a.fecha}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 inline-flex items-center"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {anexos.map((a) => {
+                const imageFile = isImage(a);
+                return (
+                  <tr key={a.id} className="hover:bg-zinc-800/40 transition-colors">
+                    <td className="px-4 py-3 font-sans font-medium text-zinc-100">
+                      <div className="flex items-center space-x-2">
+                        {imageFile ? (
+                          <ImageIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                        )}
+                        <span>{a.nombre}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400 uppercase font-sans">
+                      {a.licitacionId || a.entidadId || 'General'}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400 font-sans">
+                      <Badge variant={imageFile ? "success" : "info"}>
+                        {imageFile ? 'Fotografía' : 'Documento PDF'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400">
+                      {a.fecha || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 text-right font-sans">
+                      <div className="flex items-center justify-end space-x-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewingAnexo(a)}
+                          className="px-2.5 py-1 rounded-lg bg-blue-950/60 border border-blue-800/80 text-blue-400 hover:bg-blue-900/80 flex items-center space-x-1 text-xs font-semibold cursor-pointer transition-all"
+                          title="Visualizar en pantalla"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(a)}
+                          className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors cursor-pointer"
+                          title="Descargar archivo"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+
+                        {onDeleteAnexo && (
+                          <button
+                            type="button"
+                            onClick={() => setDeletingAnexo(a)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer"
+                            title="Eliminar anexo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Modal Visualizador Integrado de Documentos e Imágenes (92vw x 83vh) */}
+      <Modal
+        isOpen={!!viewingAnexo}
+        onClose={() => setViewingAnexo(null)}
+        title={`Visualizador: ${viewingAnexo?.nombre || 'Anexo'}`}
+        maxWidth="max-w-[92vw]"
+      >
+        <div className="space-y-3 w-full">
+          {/* Header Controls for Viewer */}
+          <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-mono">
+              {isImage(viewingAnexo) ? 'Fotografía / Imagen' : 'Documento PDF'}
+            </span>
+
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="xs" onClick={handlePrint}>
+                <Printer className="w-3.5 h-3.5" />
+                <span>Imprimir</span>
+              </Button>
+
+              <Button variant="primary" size="xs" onClick={() => handleDownload(viewingAnexo)}>
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar</span>
+              </Button>
+
+              {onDeleteAnexo && viewingAnexo && (
+                <Button variant="danger" size="xs" onClick={() => setDeletingAnexo(viewingAnexo)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Canvas Display */}
+          {viewingAnexo && (
+            isImage(viewingAnexo) ? (
+              <div className="h-[78vh] flex items-center justify-center bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+                <img
+                  src={viewingAnexo.url}
+                  alt={viewingAnexo.nombre}
+                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl"
+                />
+              </div>
+            ) : (
+              <iframe
+                src={viewingAnexo.url}
+                className="w-full h-[78vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
+                title="Visualizador de Documento"
+              />
+            )
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal Confirmación Borrado de Anexo */}
+      <Modal
+        isOpen={!!deletingAnexo}
+        onClose={() => setDeletingAnexo(null)}
+        title={`Eliminar Anexo: ${deletingAnexo?.nombre || ''}`}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-300">
+            ¿Está seguro que desea eliminar el archivo adjunto <strong className="text-zinc-100">{deletingAnexo?.nombre}</strong>? Esta acción eliminará el archivo del servidor.
+          </p>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" onClick={() => setDeletingAnexo(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleConfirmDelete}>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Confirmar Eliminar</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

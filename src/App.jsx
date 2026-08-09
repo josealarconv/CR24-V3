@@ -150,6 +150,11 @@ export default function App() {
     setAnexos(updated);
   };
 
+  const handleDeleteAnexo = (anexoId) => {
+    const updated = deleteItem('ANEXOS', anexoId);
+    setAnexos(updated);
+  };
+
   const handleAddNotaLicitacion = (newNota) => {
     const updated = addItem('NOTAS_LICITACION', newNota);
     setNotasLicitacion(updated);
@@ -271,6 +276,7 @@ export default function App() {
               onAddDetalle={handleAddDetalle}
               onAddConsulta={handleAddConsulta}
               onAddAnexo={handleAddAnexo}
+              onDeleteAnexo={handleDeleteAnexo}
               onAddNotaLicitacion={handleAddNotaLicitacion}
               onAddInvestigacionIa={handleAddInvestigacionIa}
               onAddCotizacionVersion={handleAddCotizacionVersion}
@@ -334,6 +340,7 @@ export default function App() {
         {activeView === 'anexos' && (
           <AnexosTableView
             anexos={anexos}
+            onDeleteAnexo={handleDeleteAnexo}
           />
         )}
 
