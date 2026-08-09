@@ -24,7 +24,9 @@ import {
   Edit2,
   Image as ImageIcon,
   UserPlus,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { generateCotizacionPDF, generateWhatsAppShareLink, generateSMSShareLink, generateEmailShareLink } from '../../services/pdfService';
 import { uploadFileToStorage } from '../../services/firebaseStorageService';
@@ -62,7 +64,11 @@ export default function LicitacionMasterDetail({
   onUpdateEstatus,
   onAddProveedor
 }) {
-  const [activeTab, setActiveTab] = useState('detalles'); // 'detalles' | 'consultas' | 'cotizacion' | 'anexos' | 'notas' | 'ia_history'
+  const [activeTab, setActiveTab] = useState('detalles'); // 'detalles' | 'anexos' | 'cotizacion' | 'notas'
+
+  // Accordion: expanded item and its active sub-tab
+  const [expandedItemId, setExpandedItemId] = useState(null);
+  const [activeItemSubTab, setActiveItemSubTab] = useState('consultas'); // 'consultas' | 'anexos_item' | 'ia_history'
 
   // Product Modal State (Create / Edit Item)
   const [showProductoModal, setShowProductoModal] = useState(false);
@@ -770,11 +776,9 @@ export default function LicitacionMasterDetail({
       <div className="flex border-b border-zinc-800 space-x-4 w-full">
         {[
           { id: 'detalles', label: `Productos (${detalles.length})` },
-          { id: 'consultas', label: `Consultas (${consultas.length})` },
+          { id: 'anexos', label: `Anexos Lic. (${anexos.length})` },
           { id: 'cotizacion', label: `Cotizaciones (${cotizaciones.length})` },
-          { id: 'notas', label: `Notas (${notasLicitacion.length})` },
-          { id: 'ia_history', label: `Consulta IA (${itemInvestigaciones.length})` },
-          { id: 'anexos', label: `Anexos (${anexos.length})` }
+          { id: 'notas', label: `Notas (${notasLicitacion.length})` }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -1072,6 +1076,166 @@ export default function LicitacionMasterDetail({
                         </div>
                       </div>
                     )}
+
+                    {/* ACCORDION EXPAND BUTTON */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (expandedItemId === item.id) {
+                          setExpandedItemId(null);
+                        } else {
+                          setExpandedItemId(item.id);
+                          setActiveItemSubTab('consultas');
+                        }
+                      }}
+                      className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        expandedItemId === item.id
+                          ? 'bg-blue-950/60 border border-blue-800/60 text-blue-300'
+                          : 'bg-zinc-800/40 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                      }`}
+                    >
+                      {expandedItemId === item.id ? (
+                        <><ChevronUp className="w-3.5 h-3.5" /><span>Contraer Detalle</span></>
+                      ) : (
+                        <><ChevronDown className="w-3.5 h-3.5" /><span>Consultas ({itemConsultas.length}) · Anexos ({itemAnexos.length}) · IA ({investigacionesIa.filter(i => i.detalleId === item.id).length})</span></>
+                      )}
+                    </button>
+
+                    {/* ACCORDION EXPANDED CONTENT */}
+                    {expandedItemId === item.id && (
+                      <div className="border-t border-blue-800/40 pt-3 space-y-3">
+                        {/* Sub-tabs */}
+                        <div className="flex space-x-2 border-b border-zinc-800/60 pb-2">
+                          {[
+                            { id: 'consultas', label: `Consultas (${itemConsultas.length})` },
+                            { id: 'anexos_item', label: `Anexos (${itemAnexos.length})` },
+                            { id: 'ia_history', label: `Historial IA (${investigacionesIa.filter(i => i.detalleId === item.id).length})` }
+                          ].map(st => (
+                            <button
+                              key={st.id}
+                              onClick={() => setActiveItemSubTab(st.id)}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                                activeItemSubTab === st.id
+                                  ? 'bg-blue-600/20 text-blue-300 border border-blue-700/50'
+                                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                              }`}
+                            >
+                              {st.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Sub-tab: Consultas de Precios */}
+                        {activeItemSubTab === 'consultas' && (
+                          <div>
+                            {itemConsultas.length === 0 ? (
+                              <p className="text-xs text-zinc-500 py-3 text-center">Sin consultas de precios para este producto.</p>
+                            ) : (
+                              <div className="divide-y divide-zinc-800/60">
+                                {itemConsultas.map(c => {
+                                  const prov = proveedores.find(p => p.id === c.proveedorId);
+                                  return (
+                                    <div key={c.id} className="py-2 flex items-center justify-between text-xs">
+                                      <div className="space-y-0.5">
+                                        <p className="text-zinc-200 font-medium">{prov?.nombre || c.proveedorId}</p>
+                                        <p className="text-zinc-500 font-mono text-[10px]">
+                                          Despacho: {c.cantidadADespachar}u · Costo unit: ${c.costoUnitarioCompuesto?.toLocaleString('es-CL')} · Total: ${c.subtotalCosto?.toLocaleString('es-CL')}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <button type="button" onClick={() => handleOpenEditConsulta(c, item)} className="p-1 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded transition-colors cursor-pointer">
+                                          <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        {onDeleteConsulta && (
+                                          <button type="button" onClick={() => setDeletingConsulta(c)} className="p-1 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Sub-tab: Anexos del Producto */}
+                        {activeItemSubTab === 'anexos_item' && (
+                          <div>
+                            {itemAnexos.length === 0 ? (
+                              <p className="text-xs text-zinc-500 py-3 text-center">Sin archivos adjuntos para este producto.</p>
+                            ) : (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {itemAnexos.map((anx, ai) => (
+                                  <div key={ai} className="p-2 bg-zinc-950/80 border border-zinc-800 rounded-lg text-xs space-y-1">
+                                    {anx.tipo?.startsWith('image/') ? (
+                                      <img src={anx.url} alt={anx.nombre} className="w-full h-20 object-cover rounded" />
+                                    ) : (
+                                      <div className="flex items-center gap-1.5">
+                                        <Paperclip className="w-3.5 h-3.5 text-blue-400" />
+                                        <span className="text-zinc-300 truncate">{anx.nombre}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-end">
+                                      <a href={anx.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 text-[10px]">Descargar</a>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Sub-tab: Historial IA */}
+                        {activeItemSubTab === 'ia_history' && (
+                          <div>
+                            {investigacionesIa.filter(i => i.detalleId === item.id).length === 0 ? (
+                              <p className="text-xs text-zinc-500 py-3 text-center">Sin investigaciones IA para este producto.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {investigacionesIa.filter(i => i.detalleId === item.id).map(inv => (
+                                  <div key={inv.id} className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-lg text-xs space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-zinc-400 font-mono text-[10px]">{inv.fechaHora}</span>
+                                      {onDeleteInvestigacionIa && (
+                                        <button type="button" onClick={() => onDeleteInvestigacionIa(inv.id)} className="p-1 text-zinc-400 hover:text-red-400 rounded transition-colors cursor-pointer">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    {inv.resultadoJSON && (
+                                      <div className="space-y-1.5 text-zinc-300 text-[11px]">
+                                        <p><strong>Resumen:</strong> {inv.resultadoJSON.resumenTecnico}</p>
+                                        {inv.resultadoJSON.especificacionesTecnicas?.length > 0 && (
+                                          <div>
+                                            <strong className="text-zinc-200">Especificaciones:</strong>
+                                            <ul className="list-disc list-inside text-zinc-400 mt-0.5">
+                                              {inv.resultadoJSON.especificacionesTecnicas.map((s, i) => <li key={i}>{s}</li>)}
+                                            </ul>
+                                          </div>
+                                        )}
+                                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-800/60">
+                                          <div>
+                                            <strong className="text-zinc-200">Proveedores Locales:</strong>
+                                            <ul className="text-zinc-400 mt-0.5">{inv.resultadoJSON.proveedoresLocalesChilenos?.map((p, i) => <li key={i}>• {p}</li>)}</ul>
+                                          </div>
+                                          <div>
+                                            <strong className="text-zinc-200">Internacionales:</strong>
+                                            <ul className="text-zinc-400 mt-0.5">{inv.resultadoJSON.proveedoresInternacionales?.map((p, i) => <li key={i}>• {p}</li>)}</ul>
+                                          </div>
+                                        </div>
+                                        <p className="font-mono text-emerald-400 pt-1"><strong>Rango:</strong> {inv.resultadoJSON.precioRangoMercado}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1080,71 +1244,6 @@ export default function LicitacionMasterDetail({
         </div>
       )}
 
-      {/* SUB-TABLE 2: CONSULTAS DE PRECIOS */}
-      {activeTab === 'consultas' && (
-        <Card title="Consultas de Precios Aceptadas a Proveedores">
-          {consultas.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-4 text-center">No hay consultas de precios registradas.</p>
-          ) : (
-            <div className="divide-y divide-zinc-800/80 w-full">
-              {consultas.map(c => {
-                const det = detalles.find(d => d.id === c.detalleId);
-                const computed = computeQuoteCosts({
-                  licitacionMoneda: licitacion.moneda,
-                  monedaProveedor: c.monedaProveedor || licitacion.moneda,
-                  tasaCambio: c.tasaCambio || 950,
-                  precioBase: c.precioBase,
-                  costoFlete: c.costoFlete,
-                  costoInternacion: c.costoInternacion,
-                  costoAfex: c.costoAfex,
-                  porcentajeImpuesto: c.porcentajeImpuesto,
-                  porcentajeMargen: c.porcentajeMargen !== undefined ? c.porcentajeMargen : 25,
-                  cantidadADespachar: c.cantidadADespachar
-                });
-
-                return (
-                  <div key={c.id} className="py-2.5 flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-semibold text-zinc-100">{getProveedorNombre(c.proveedorId)}</p>
-                      <p className="text-[11px] text-zinc-500 font-mono">
-                        Ítem: <strong className="text-zinc-300">{det?.descripcion || 'Genérico'}</strong> • Despacha: {c.cantidadADespachar} u. (Cotizó {c.cantidadCotizada || c.cantidadADespachar} u.) • {c.fecha}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right font-mono">
-                        <p className="font-bold text-emerald-400">Subtotal Venta: {formatMoney(computed.subtotalVenta, licitacion.moneda)}</p>
-                        <p className="text-[10px] text-zinc-500">Costo Unit: {formatMoney(computed.costoUnitarioCompuesto, licitacion.moneda)} | Venta Unit: {formatMoney(computed.precioVentaUnitario, licitacion.moneda)} (+{c.porcentajeMargen || 25}%)</p>
-                      </div>
-
-                      {det && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditConsulta(c, det)}
-                          className="p-1.5 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded transition-colors cursor-pointer"
-                          title="Editar cotización de proveedor"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      {onDeleteConsulta && (
-                        <button
-                          type="button"
-                          onClick={() => setDeletingConsulta(c)}
-                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
-                          title="Eliminar consulta de proveedor"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      )}
 
       {/* SUB-TABLE 3: COTIZACIONES PDF VERSIONADAS */}
       {activeTab === 'cotizacion' && (
@@ -1288,78 +1387,6 @@ export default function LicitacionMasterDetail({
         </Card>
       )}
 
-      {/* SUB-TABLE 5: HISTÓRICO DE INVESTIGACIÓN IA GEMINI */}
-      {activeTab === 'ia_history' && (
-        <Card title="Histórico de Investigaciones Gemini IA (Indexado por Ítem)">
-          {itemInvestigaciones.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-4 text-center">No se han realizado investigaciones de IA en esta licitación.</p>
-          ) : (
-            <div className="space-y-4 w-full">
-              {itemInvestigaciones.map(inv => (
-                <div key={inv.id} className="p-4 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-3 text-xs">
-                  <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                    <div className="flex items-center space-x-2">
-                      <Sparkles className="w-4 h-4 text-blue-400" />
-                      <span className="font-bold text-zinc-100 font-mono">Investigación IA - {inv.fechaHora}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[10px] text-zinc-500 font-mono">Ítem: {inv.promptBusqueda}</span>
-                      {onDeleteInvestigacionIa && (
-                        <button
-                          type="button"
-                          onClick={() => onDeleteInvestigacionIa(inv.id)}
-                          className="p-1 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
-                          title="Eliminar investigación IA"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {inv.resultadoJSON && (
-                    <div className="space-y-2 text-zinc-300">
-                      <p><strong>Resumen Técnico:</strong> {inv.resultadoJSON.resumenTecnico}</p>
-                      
-                      <div>
-                        <strong className="text-zinc-200 block text-[11px]">Especificaciones Sugeridas:</strong>
-                        <ul className="list-disc list-inside text-zinc-400 font-mono text-[11px] mt-0.5">
-                          {inv.resultadoJSON.especificacionesTecnicas?.map((spec, i) => (
-                            <li key={i}>{spec}</li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-zinc-800/60">
-                        <div>
-                          <strong className="text-zinc-200 block text-[11px]">Proveedores Locales (Chile):</strong>
-                          <ul className="text-zinc-400 font-mono text-[11px] mt-0.5">
-                            {inv.resultadoJSON.proveedoresLocalesChilenos?.map((p, i) => (
-                              <li key={i}>• {p}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <strong className="text-zinc-200 block text-[11px]">Proveedores Internacionales:</strong>
-                          <ul className="text-zinc-400 font-mono text-[11px] mt-0.5">
-                            {inv.resultadoJSON.proveedoresInternacionales?.map((p, i) => (
-                              <li key={i}>• {p}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-
-                      <p className="pt-2 font-mono text-emerald-400">
-                        <strong>Rango Estimado Mercado:</strong> {inv.resultadoJSON.precioRangoMercado}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
 
       {/* SUB-TABLE 6: ANEXOS Y ARCHIVOS */}
       {activeTab === 'anexos' && (

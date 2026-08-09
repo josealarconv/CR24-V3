@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Trash2, Paperclip, X, Upload, Image as ImageIcon, AlertTriangle, UserPlus, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Filter, ChevronLeft, ChevronRight, Calendar, Search, Edit2, Trash2, Paperclip, X, Upload, Image as ImageIcon, AlertTriangle, UserPlus, AlertCircle, Sparkles, FileCheck, Loader2 } from 'lucide-react';
 import { Button, Badge, Card, EmptyState, Modal, Input } from '../ui/Components';
+import { analizarDocumentoLicitacion } from '../../services/aiRegistrationService';
 
 export default function LicitacionesTableView({
   licitaciones = [],
@@ -18,7 +19,8 @@ export default function LicitacionesTableView({
   onEditLicitacion,
   onDeleteLicitacion,
   onAddAnexo,
-  onAddCliente
+  onAddCliente,
+  onAddDetalle
 }) {
   const [filterEstatus, setFilterEstatus] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
@@ -66,6 +68,12 @@ export default function LicitacionesTableView({
   const [newClienteNombre, setNewClienteNombre] = useState('');
   const [newClienteRut, setNewClienteRut] = useState('');
   const [newClienteError, setNewClienteError] = useState('');
+
+  // AI Registration
+  const [aiFile, setAiFile] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
+  const [aiError, setAiError] = useState('');
 
   const getClienteNombre = (id) => {
     const cli = clientes.find(c => c.id === id);
@@ -229,6 +237,24 @@ export default function LicitacionesTableView({
           });
         });
       }
+
+      // Auto-create items from AI analysis
+      if (aiResult?.items?.length > 0 && onAddDetalle) {
+        aiResult.items.forEach((item, idx) => {
+          onAddDetalle({
+            id: `DET-${Date.now().toString(36).toUpperCase()}-${idx}`,
+            licitacionId: generatedId,
+            descripcion: item.descripcion || `Producto ${idx + 1}`,
+            cantidadRequerida: item.cantidad || 1,
+            unidad: item.unidad || 'unidad',
+            condiciones: item.especificaciones || '',
+            notas: '',
+            anexos: []
+          });
+        });
+      }
+      setAiResult(null);
+      setAiFile(null);
     }
 
     setShowModal(false);
@@ -549,6 +575,126 @@ export default function LicitacionesTableView({
               className="w-full p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-sans"
             />
           </div>
+
+          {/* AI Registration Zone */}
+          {!editingLic && (
+            <div className="border border-indigo-800/50 rounded-xl p-3 bg-indigo-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Registrar con AI</span>
+                  <span className="text-zinc-500 text-[10px] font-normal">(Sube bases técnicas y la IA creará la licitación)</span>
+                </label>
+              </div>
+
+              {!aiResult ? (
+                <div>
+                  <div
+                    className="border-2 border-dashed border-indigo-800/50 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-600/70 transition-colors"
+                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500'); }}
+                    onDragLeave={(e) => { e.currentTarget.classList.remove('border-indigo-500'); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove('border-indigo-500');
+                      const f = e.dataTransfer.files[0];
+                      if (f) setAiFile(f);
+                    }}
+                    onClick={() => document.getElementById('ai-file-input')?.click()}
+                  >
+                    <input
+                      id="ai-file-input"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+                      className="hidden"
+                      onChange={(e) => { if (e.target.files[0]) setAiFile(e.target.files[0]); }}
+                    />
+                    {aiFile ? (
+                      <div className="flex items-center justify-center gap-2 text-indigo-300 text-xs">
+                        <FileCheck className="w-4 h-4" />
+                        <span className="font-medium">{aiFile.name}</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setAiFile(null); }} className="text-zinc-400 hover:text-red-400">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Upload className="w-5 h-5 text-indigo-400 mx-auto" />
+                        <p className="text-[11px] text-zinc-400">Arrastra o haz clic para subir un documento</p>
+                        <p className="text-[10px] text-zinc-600">Word, PDF, Excel o imágenes</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {aiFile && (
+                    <button
+                      type="button"
+                      disabled={aiLoading}
+                      onClick={async () => {
+                        setAiLoading(true);
+                        setAiError('');
+                        try {
+                          const result = await analizarDocumentoLicitacion(aiFile);
+                          if (result.success && result.data) {
+                            const d = result.data;
+                            // Pre-fill form fields
+                            if (d.numeroLicitacion) setNumLic(d.numeroLicitacion);
+                            if (d.moneda) setMoneda(d.moneda);
+                            if (d.fechaRecepcion) setFecha(d.fechaRecepcion);
+                            if (d.fechaLimite) setFechaCot(d.fechaLimite);
+                            if (d.observaciones) setNotas(d.observaciones);
+                            // Match client by name if possible
+                            if (d.clienteNombre) {
+                              const matchedClient = clientes.find(c => c.nombre.toLowerCase().includes(d.clienteNombre.toLowerCase()));
+                              if (matchedClient) setClienteId(matchedClient.id);
+                            }
+                            setAiResult(d);
+                          }
+                        } catch (err) {
+                          setAiError('Error al analizar el documento.');
+                        } finally {
+                          setAiLoading(false);
+                        }
+                      }}
+                      className="w-full mt-2 px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      {aiLoading ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Analizando documento...</span></>
+                      ) : (
+                        <><Sparkles className="w-3.5 h-3.5" /><span>Analizar con AI</span></>
+                      )}
+                    </button>
+                  )}
+
+                  {aiError && (
+                    <p className="text-[11px] text-red-400 mt-1">{aiError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                      <FileCheck className="w-3.5 h-3.5" /> Datos extraídos exitosamente
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setAiResult(null); setAiFile(null); }}
+                      className="text-[10px] text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                    >
+                      Reiniciar
+                    </button>
+                  </div>
+                  <div className="bg-zinc-950/60 rounded-lg p-2 text-[11px] text-zinc-300 space-y-1 border border-zinc-800">
+                    <p>✅ Formulario pre-llenado con datos del documento</p>
+                    {aiResult.items && aiResult.items.length > 0 && (
+                      <p className="text-indigo-300">
+                        ✨ {aiResult.items.length} producto(s) detectados — se crearán automáticamente al guardar
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Carga y Adjunto de Archivos y Fotografías (Opcional) */}
           <div className="border border-zinc-800/80 rounded-xl p-3 bg-zinc-950/40 space-y-2">
