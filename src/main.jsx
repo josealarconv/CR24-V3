@@ -25,6 +25,9 @@ class ErrorBoundary extends Component {
           <p style={{ fontSize: '14px', color: '#a1a1aa', marginTop: '8px' }}>
             {this.state.error?.message || 'Ocurrió un problema al renderizar la aplicación.'}
           </p>
+          <pre style={{ fontSize: '11px', color: '#71717a', marginTop: '12px', maxHeight: '200px', overflow: 'auto', background: '#18181b', padding: '12px', borderRadius: '8px' }}>
+            {this.state.error?.stack || ''}
+          </pre>
           <button
             onClick={() => window.location.reload()}
             style={{ marginTop: '16px', padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
