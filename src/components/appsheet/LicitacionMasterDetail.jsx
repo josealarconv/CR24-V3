@@ -373,8 +373,8 @@ export default function LicitacionMasterDetail({
 
             {/* Versioned PDF Generation Action */}
             <Button variant="primary" size="sm" onClick={handleGenerateVersionedPDF}>
-              <Download className="w-3.5 h-3.5" />
-              <span>Generar Cotización PDF (v{cotizaciones.length + 1})</span>
+              <FileCheck className="w-3.5 h-3.5" />
+              <span>Cotizar</span>
             </Button>
           </div>
         </div>
@@ -406,14 +406,14 @@ export default function LicitacionMasterDetail({
         )}
       </div>
 
-      {/* Tab Navigation for Sub-tables */}
+      {/* Tab Navigation for Sub-tables (Clean Simplified Labels) */}
       <div className="flex border-b border-zinc-800 space-x-4 w-full">
         {[
-          { id: 'detalles', label: `Líneas de Productos (${detalles.length})` },
-          { id: 'consultas', label: `Consultas de Precios (${consultas.length})` },
-          { id: 'cotizacion', label: `Cotizaciones PDF (${cotizaciones.length})` },
-          { id: 'notas', label: `Notas de Seguimiento (${notasLicitacion.length})` },
-          { id: 'ia_history', label: `Histórico IA Gemini (${itemInvestigaciones.length})` },
+          { id: 'detalles', label: `Productos (${detalles.length})` },
+          { id: 'consultas', label: `Consultas (${consultas.length})` },
+          { id: 'cotizacion', label: `Cotizaciones (${cotizaciones.length})` },
+          { id: 'notas', label: `Notas (${notasLicitacion.length})` },
+          { id: 'ia_history', label: `Consulta IA (${itemInvestigaciones.length})` },
           { id: 'anexos', label: `Anexos (${anexos.length})` }
         ].map((tab) => (
           <button
@@ -754,9 +754,11 @@ export default function LicitacionMasterDetail({
         <Card title="Anexos y Documentos Adjuntos">
           <div className="space-y-4 w-full">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <label className="flex items-center space-x-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium cursor-pointer">
+              <p className="text-xs text-zinc-400">Documentos y fotografías adjuntas a esta licitación.</p>
+              <label className="flex items-center space-x-2 px-3 py-1.5 bg-blue-900/80 hover:bg-blue-800 text-blue-100 rounded-lg text-xs font-semibold cursor-pointer border border-blue-700/80 shadow-xs transition-all">
+                <Plus className="w-3.5 h-3.5" />
                 <Upload className="w-3.5 h-3.5" />
-                <span>{uploading ? 'Subiendo...' : 'Adjuntar Archivo PDF / Imagen'}</span>
+                <span>{uploading ? 'Subiendo...' : 'Agregar Anexo'}</span>
                 <input
                   type="file"
                   className="hidden"
@@ -827,52 +829,27 @@ export default function LicitacionMasterDetail({
         </Card>
       )}
 
-      {/* Modal Visualizador Integrado de Anexos (PDF e Imágenes) */}
+      {/* Modal Visualizador Maximizador Sin Cabecera Redundante (92vw x 83vh) */}
       <Modal
         isOpen={!!viewingAnexoDetail}
         onClose={() => setViewingAnexoDetail(null)}
-        title={`Visualizador: ${viewingAnexoDetail?.nombre || 'Anexo'}`}
+        title={viewingAnexoDetail?.nombre || 'Visualizador de Anexo'}
         maxWidth="max-w-[92vw]"
       >
-        <div className="space-y-3 w-full">
-          <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-xs">
-            <span className="text-zinc-400 font-mono">
-              {isImageAnexo(viewingAnexoDetail) ? 'Fotografía / Imagen' : 'Documento PDF'}
-            </span>
-
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="xs" onClick={handlePrintAnexo}>
-                <Printer className="w-3.5 h-3.5" />
-                <span>Imprimir</span>
-              </Button>
-
-              <Button variant="primary" size="xs" onClick={() => handleDownloadAnexo(viewingAnexoDetail)}>
-                <Download className="w-3.5 h-3.5" />
-                <span>Descargar</span>
-              </Button>
-
-              {onDeleteAnexo && viewingAnexoDetail && (
-                <Button variant="danger" size="xs" onClick={() => setDeletingAnexoDetail(viewingAnexoDetail)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Eliminar</span>
-                </Button>
-              )}
-            </div>
-          </div>
-
+        <div className="w-full">
           {viewingAnexoDetail && (
             isImageAnexo(viewingAnexoDetail) ? (
-              <div className="h-[78vh] flex items-center justify-center bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+              <div className="h-[83vh] flex items-center justify-center bg-zinc-950 p-2 rounded-xl border border-zinc-800 overflow-auto">
                 <img
                   src={viewingAnexoDetail.url}
                   alt={viewingAnexoDetail.nombre}
-                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl"
+                  className="max-h-[81vh] max-w-full object-contain rounded-lg shadow-2xl"
                 />
               </div>
             ) : (
               <iframe
                 src={viewingAnexoDetail.url}
-                className="w-full h-[78vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
+                className="w-full h-[83vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
                 title="Visualizador de Documento"
               />
             )

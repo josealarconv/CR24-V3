@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Paperclip, Eye, Download, Printer, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
+import { Paperclip, Eye, Download, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
 import { EmptyState, Modal, Button, Badge } from '../ui/Components';
 
 export default function AnexosTableView({ anexos = [], onDeleteAnexo }) {
@@ -21,17 +21,6 @@ export default function AnexosTableView({ anexos = [], onDeleteAnexo }) {
       name.endsWith('.gif') ||
       name.endsWith('.svg')
     );
-  };
-
-  const handlePrint = () => {
-    if (!viewingAnexo) return;
-    const printWindow = window.open(viewingAnexo.url, '_blank');
-    if (printWindow) {
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    }
   };
 
   const handleDownload = (anexo) => {
@@ -150,54 +139,27 @@ export default function AnexosTableView({ anexos = [], onDeleteAnexo }) {
         </div>
       )}
 
-      {/* Modal Visualizador Integrado de Documentos e Imágenes (92vw x 83vh) */}
+      {/* Modal Visualizador Maximizador Sin Cabeceras Redundantes (92vw x 83vh) */}
       <Modal
         isOpen={!!viewingAnexo}
         onClose={() => setViewingAnexo(null)}
-        title={`Visualizador: ${viewingAnexo?.nombre || 'Anexo'}`}
+        title={viewingAnexo?.nombre || 'Visualizador de Anexo'}
         maxWidth="max-w-[92vw]"
       >
-        <div className="space-y-3 w-full">
-          {/* Header Controls for Viewer */}
-          <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-xs">
-            <span className="text-zinc-400 font-mono">
-              {isImage(viewingAnexo) ? 'Fotografía / Imagen' : 'Documento PDF'}
-            </span>
-
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="xs" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5" />
-                <span>Imprimir</span>
-              </Button>
-
-              <Button variant="primary" size="xs" onClick={() => handleDownload(viewingAnexo)}>
-                <Download className="w-3.5 h-3.5" />
-                <span>Descargar</span>
-              </Button>
-
-              {onDeleteAnexo && viewingAnexo && (
-                <Button variant="danger" size="xs" onClick={() => setDeletingAnexo(viewingAnexo)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Eliminar</span>
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Canvas Display */}
+        <div className="w-full">
           {viewingAnexo && (
             isImage(viewingAnexo) ? (
-              <div className="h-[78vh] flex items-center justify-center bg-zinc-950 p-4 rounded-xl border border-zinc-800 overflow-auto">
+              <div className="h-[83vh] flex items-center justify-center bg-zinc-950 p-2 rounded-xl border border-zinc-800 overflow-auto">
                 <img
                   src={viewingAnexo.url}
                   alt={viewingAnexo.nombre}
-                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl"
+                  className="max-h-[81vh] max-w-full object-contain rounded-lg shadow-2xl"
                 />
               </div>
             ) : (
               <iframe
                 src={viewingAnexo.url}
-                className="w-full h-[78vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
+                className="w-full h-[83vh] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
                 title="Visualizador de Documento"
               />
             )
@@ -213,7 +175,7 @@ export default function AnexosTableView({ anexos = [], onDeleteAnexo }) {
       >
         <div className="space-y-4">
           <p className="text-xs text-zinc-300">
-            ¿Está seguro que desea eliminar el archivo adjunto <strong className="text-zinc-100">{deletingAnexo?.nombre}</strong>? Esta acción eliminará el archivo del servidor.
+            ¿Está seguro que desea eliminar el archivo adjunto <strong className="text-zinc-100">{deletingAnexo?.nombre}</strong>? Esta acción no se podrá deshacer.
           </p>
 
           <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
