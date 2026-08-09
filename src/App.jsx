@@ -145,6 +145,11 @@ export default function App() {
     setDetalles(updated);
   };
 
+  const handleDeleteDetalle = (detalleId) => {
+    const updated = deleteItem('DETALLES', detalleId);
+    setDetalles(updated);
+  };
+
   const handleAddConsulta = (newConsulta) => {
     const updated = addItem('CONSULTAS', newConsulta);
     setConsultas(updated);
@@ -285,6 +290,7 @@ export default function App() {
               onBack={() => setSelectedLicitacion(null)}
               onAddDetalle={handleAddDetalle}
               onEditDetalle={handleEditDetalle}
+              onDeleteDetalle={handleDeleteDetalle}
               onAddConsulta={handleAddConsulta}
               onEditConsulta={handleEditConsulta}
               onAddAnexo={handleAddAnexo}

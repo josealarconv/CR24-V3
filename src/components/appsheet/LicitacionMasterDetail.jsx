@@ -44,6 +44,7 @@ export default function LicitacionMasterDetail({
   onBack,
   onAddDetalle,
   onEditDetalle,
+  onDeleteDetalle,
   onAddConsulta,
   onEditConsulta,
   onAddAnexo,
@@ -91,6 +92,14 @@ export default function LicitacionMasterDetail({
   const [uploading, setUploading] = useState(false);
   const [viewingAnexoDetail, setViewingAnexoDetail] = useState(null);
   const [deletingAnexoDetail, setDeletingAnexoDetail] = useState(null);
+  const [deletingItemDetail, setDeletingItemDetail] = useState(null);
+
+  const parseNumber = (val) => {
+    if (val === null || val === undefined || val === '') return 0;
+    const str = String(val).replace(',', '.');
+    const n = parseFloat(str);
+    return isNaN(n) ? 0 : n;
+  };
 
   const isImageAnexo = (anexo) => {
     if (!anexo) return false;
@@ -139,6 +148,12 @@ export default function LicitacionMasterDetail({
     setDeletingAnexoDetail(null);
   };
 
+  const handleConfirmDeleteItem = () => {
+    if (!deletingItemDetail || !onDeleteDetalle) return;
+    onDeleteDetalle(deletingItemDetail.id);
+    setDeletingItemDetail(null);
+  };
+
   // Helper calculation for supplier quote with multi-currency exchange rates and margins
   const computeQuoteCosts = ({
     licitacionMoneda = 'CLP',
@@ -150,27 +165,27 @@ export default function LicitacionMasterDetail({
     costoAfex = 0,
     porcentajeImpuesto = 0,
     porcentajeMargen = 25,
-    cantidadADespachar = 1
+    cantidadADespachar = 0
   }) => {
     let factor = 1;
-    const rate = parseFloat(tasaCambio) || 950;
+    const rate = parseNumber(tasaCambio) || 950;
     if (licitacionMoneda === 'CLP' && monedaProveedor === 'USD') {
       factor = rate;
     } else if (licitacionMoneda === 'USD' && monedaProveedor === 'CLP') {
-      factor = 1 / rate;
+      factor = rate > 0 ? 1 / rate : 1;
     }
 
-    const baseLicit = (parseFloat(precioBase) || 0) * factor;
-    const fleteLicit = (parseFloat(costoFlete) || 0) * factor;
-    const internacionLicit = (parseFloat(costoInternacion) || 0) * factor;
-    const afexLicit = (parseFloat(costoAfex) || 0) * factor;
-    const impPct = parseFloat(porcentajeImpuesto) || 0;
-    const mgnPct = parseFloat(porcentajeMargen) || 0;
+    const baseLicit = parseNumber(precioBase) * factor;
+    const fleteLicit = parseNumber(costoFlete) * factor;
+    const internacionLicit = parseNumber(costoInternacion) * factor;
+    const afexLicit = parseNumber(costoAfex) * factor;
+    const impPct = parseNumber(porcentajeImpuesto);
+    const mgnPct = parseNumber(porcentajeMargen);
 
     const impuestoMonto = baseLicit * (impPct / 100);
     const costoUnitarioCompuesto = baseLicit + fleteLicit + internacionLicit + afexLicit + impuestoMonto;
     const precioVentaUnitario = costoUnitarioCompuesto * (1 + (mgnPct / 100));
-    const qty = parseInt(cantidadADespachar) || 1;
+    const qty = parseNumber(cantidadADespachar);
     const subtotalCosto = costoUnitarioCompuesto * qty;
     const subtotalVenta = precioVentaUnitario * qty;
 
@@ -787,6 +802,26 @@ export default function LicitacionMasterDetail({
                           <Edit2 className="w-3.5 h-3.5 text-zinc-400" />
                           <span>Editar</span>
                         </button>
+
+                        {onDeleteDetalle && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const countCns = itemConsultas.length;
+                              const countAnx = itemAnexos.length;
+                              setDeletingItemDetail({
+                                item,
+                                hasData: countCns > 0 || countAnx > 0,
+                                countCns,
+                                countAnx
+                              });
+                            }}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer border border-zinc-800"
+                            title="Eliminar este producto de la licitación"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                         <button
                           type="button"
@@ -1488,7 +1523,7 @@ export default function LicitacionMasterDetail({
               </label>
               <Input
                 type="number"
-                step="0.01"
+                step="any"
                 value={tasaCambioInput}
                 onChange={(e) => setTasaCambioInput(e.target.value)}
                 placeholder="Ej: 950.00"
@@ -1507,9 +1542,10 @@ export default function LicitacionMasterDetail({
               <label className="block text-xs font-semibold text-zinc-400 mb-1">Precio Base Unitario ({monedaProveedorInput}) *</label>
               <Input
                 type="number"
+                step="any"
                 value={precioBaseInput}
                 onChange={(e) => setPrecioBaseInput(e.target.value)}
-                placeholder="Ej: 380000"
+                placeholder="Ej: 380000 o 450.50"
                 required
               />
             </div>
@@ -1517,6 +1553,7 @@ export default function LicitacionMasterDetail({
               <label className="block text-xs font-semibold text-zinc-400 mb-1">Flete / Despacho ({monedaProveedorInput})</label>
               <Input
                 type="number"
+                step="any"
                 value={costoFleteInput}
                 onChange={(e) => setCostoFleteInput(e.target.value)}
               />
@@ -1528,6 +1565,7 @@ export default function LicitacionMasterDetail({
               <label className="block text-xs font-semibold text-zinc-400 mb-1">Internación / Aduana ({monedaProveedorInput})</label>
               <Input
                 type="number"
+                step="any"
                 value={costoInternacionInput}
                 onChange={(e) => setCostoInternacionInput(e.target.value)}
               />
@@ -1536,6 +1574,7 @@ export default function LicitacionMasterDetail({
               <label className="block text-xs font-semibold text-zinc-400 mb-1">AFEX / Admin ({monedaProveedorInput})</label>
               <Input
                 type="number"
+                step="any"
                 value={costoAfexInput}
                 onChange={(e) => setCostoAfexInput(e.target.value)}
               />
@@ -1548,6 +1587,7 @@ export default function LicitacionMasterDetail({
               <label className="block text-xs font-semibold text-zinc-400 mb-1">Impuesto / IVA / Arancel (%)</label>
               <Input
                 type="number"
+                step="any"
                 value={porcentajeImpuestoInput}
                 onChange={(e) => setPorcentajeImpuestoInput(e.target.value)}
                 placeholder="Ej: 19 para IVA"
@@ -1557,6 +1597,7 @@ export default function LicitacionMasterDetail({
               <label className="block text-xs font-semibold text-amber-300 mb-1">Margen de Ganancia (%) *</label>
               <Input
                 type="number"
+                step="any"
                 value={porcentajeMargenInput}
                 onChange={(e) => setPorcentajeMargenInput(e.target.value)}
                 placeholder="Ej: 25"
@@ -1577,7 +1618,7 @@ export default function LicitacionMasterDetail({
               <span className="font-bold">{formatMoney(modalLiveCosting.precioVentaUnitario, licitacion.moneda)}</span>
             </div>
             <div className="flex justify-between text-emerald-400 pt-1 border-t border-zinc-800 font-bold text-sm">
-              <span>Subtotal Venta ({cantADespacharInput || 1} u.):</span>
+              <span>Subtotal Venta ({cantADespacharInput || 0} u.):</span>
               <span>{formatMoney(modalLiveCosting.subtotalVenta, licitacion.moneda)}</span>
             </div>
           </div>
@@ -1591,6 +1632,56 @@ export default function LicitacionMasterDetail({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Borrado de Producto */}
+      <Modal
+        isOpen={!!deletingItemDetail}
+        onClose={() => setDeletingItemDetail(null)}
+        title={`Eliminar Producto: ${deletingItemDetail?.item?.descripcion || ''}`}
+      >
+        <div className="space-y-4">
+          {deletingItemDetail?.hasData ? (
+            <div className="p-3.5 bg-amber-950/50 border border-amber-800/80 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center space-x-2 text-amber-400 font-bold">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>No se puede eliminar este producto</span>
+              </div>
+              <p className="text-zinc-300 leading-relaxed">
+                Este producto contiene información vinculada en la base de datos:
+              </p>
+              <ul className="text-amber-300/90 list-disc list-inside font-mono space-y-1">
+                {deletingItemDetail.countCns > 0 && <li>{deletingItemDetail.countCns} cotización(es) de proveedores</li>}
+                {deletingItemDetail.countAnx > 0 && <li>{deletingItemDetail.countAnx} archivo(s) anexo(s) adjunto(s)</li>}
+              </ul>
+              <p className="text-zinc-400 pt-1">
+                Para eliminar este producto, remueva primero sus cotizaciones de proveedores y anexos adjuntos.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-zinc-900 border border-zinc-800 rounded-xl space-y-2 text-xs">
+              <p className="text-zinc-200">
+                ¿Está seguro que desea eliminar permanentemente el producto <strong className="text-zinc-100">{deletingItemDetail?.item?.descripcion}</strong>?
+              </p>
+              <p className="text-zinc-400">Esta licitación no tiene cotizaciones ni anexos asociados. Esta acción no se podrá deshacer.</p>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" onClick={() => setDeletingItemDetail(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={deletingItemDetail?.hasData}
+              onClick={handleConfirmDeleteItem}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Confirmar Eliminar</span>
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
