@@ -197,6 +197,34 @@ export default function App() {
     setCotizaciones(updated);
   };
 
+  const handleDeleteConsulta = (consultaId) => {
+    if (!consultaId) return;
+    const targetIdStr = String(consultaId).trim();
+    deleteItem('CONSULTAS', 'id', targetIdStr);
+    setConsultas(prev => prev.filter(c => String(c.id || '').trim() !== targetIdStr));
+  };
+
+  const handleDeleteNotaLicitacion = (notaId) => {
+    if (!notaId) return;
+    const targetIdStr = String(notaId).trim();
+    deleteItem('NOTAS_LICITACION', 'id', targetIdStr);
+    setNotasLicitacion(prev => prev.filter(n => String(n.id || '').trim() !== targetIdStr));
+  };
+
+  const handleDeleteInvestigacionIa = (invId) => {
+    if (!invId) return;
+    const targetIdStr = String(invId).trim();
+    deleteItem('INVESTIGACIONES_IA', 'id', targetIdStr);
+    setInvestigacionesIa(prev => prev.filter(i => String(i.id || '').trim() !== targetIdStr));
+  };
+
+  const handleDeleteCotizacion = (cotId) => {
+    if (!cotId) return;
+    const targetIdStr = String(cotId).trim();
+    deleteItem('COTIZACIONES', 'id', targetIdStr);
+    setCotizaciones(prev => prev.filter(c => String(c.id || '').trim() !== targetIdStr));
+  };
+
   const handleSaveUsuario = (userObj) => {
     const existingIndex = usuarios.findIndex(u => u.email.toLowerCase() === userObj.email.toLowerCase());
     let updated = [];
@@ -305,11 +333,15 @@ export default function App() {
               onDeleteDetalle={handleDeleteDetalle}
               onAddConsulta={handleAddConsulta}
               onEditConsulta={handleEditConsulta}
+              onDeleteConsulta={handleDeleteConsulta}
               onAddAnexo={handleAddAnexo}
               onDeleteAnexo={handleDeleteAnexo}
               onAddNotaLicitacion={handleAddNotaLicitacion}
+              onDeleteNotaLicitacion={handleDeleteNotaLicitacion}
               onAddInvestigacionIa={handleAddInvestigacionIa}
+              onDeleteInvestigacionIa={handleDeleteInvestigacionIa}
               onAddCotizacionVersion={handleAddCotizacionVersion}
+              onDeleteCotizacion={handleDeleteCotizacion}
               onUpdateEstatus={handleUpdateEstatusLicitacion}
             />
           ) : (

@@ -48,11 +48,15 @@ export default function LicitacionMasterDetail({
   onDeleteDetalle,
   onAddConsulta,
   onEditConsulta,
+  onDeleteConsulta,
   onAddAnexo,
   onDeleteAnexo,
   onAddNotaLicitacion,
+  onDeleteNotaLicitacion,
   onAddInvestigacionIa,
+  onDeleteInvestigacionIa,
   onAddCotizacionVersion,
+  onDeleteCotizacion,
   onUpdateEstatus
 }) {
   const [activeTab, setActiveTab] = useState('detalles'); // 'detalles' | 'consultas' | 'cotizacion' | 'anexos' | 'notas' | 'ia_history'
@@ -172,6 +176,22 @@ export default function LicitacionMasterDetail({
     } finally {
       setDeletingItemDetail(null);
       setTimeout(() => setActionFeedback(null), 4000);
+    }
+  };
+
+  const handleDeleteItemAnexoFromView = (detalleItem, anexoId) => {
+    try {
+      const updatedAnexos = (detalleItem.anexos || []).filter(a => a.id !== anexoId);
+      const updatedItem = { ...detalleItem, anexos: updatedAnexos };
+      if (onEditDetalle) {
+        onEditDetalle(updatedItem);
+      }
+      updateItem('DETALLES', 'id', updatedItem.id, updatedItem);
+      window.dispatchEvent(new Event('storage-update'));
+      setActionFeedback('Anexo del producto eliminado correctamente.');
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error('Error al eliminar anexo del producto:', err);
     }
   };
 
@@ -856,11 +876,13 @@ export default function LicitacionMasterDetail({
                             onClick={() => {
                               const countCns = itemConsultas.length;
                               const countAnx = itemAnexos.length;
+                              const countInv = investigacionesIa.filter(i => i.detalleId === item.id).length;
                               setDeletingItemDetail({
                                 item,
-                                hasData: countCns > 0 || countAnx > 0,
+                                hasData: countCns > 0 || countAnx > 0 || countInv > 0,
                                 countCns,
-                                countAnx
+                                countAnx,
+                                countInv
                               });
                             }}
                             className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer border border-zinc-800"
@@ -913,6 +935,15 @@ export default function LicitacionMasterDetail({
                                 title="Ver anexo"
                               >
                                 <Eye className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteItemAnexoFromView(item, anx.id)}
+                                className="p-1 text-zinc-400 hover:text-red-400 cursor-pointer"
+                                title="Eliminar anexo del producto"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           ))}
@@ -1002,6 +1033,17 @@ export default function LicitacionMasterDetail({
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
+
+                                  {onDeleteConsulta && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onDeleteConsulta(c.id)}
+                                      className="p-1 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
+                                      title="Eliminar cotización de este proveedor"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1063,6 +1105,17 @@ export default function LicitacionMasterDetail({
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                       )}
+
+                      {onDeleteConsulta && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteConsulta(c.id)}
+                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
+                          title="Eliminar consulta de proveedor"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1112,6 +1165,17 @@ export default function LicitacionMasterDetail({
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+                      )}
+
+                      {onDeleteCotizacion && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteCotizacion(cot.id)}
+                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
+                          title="Eliminar esta versión de cotización"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1180,7 +1244,19 @@ export default function LicitacionMasterDetail({
                   <div key={n.id} className="p-3 bg-zinc-950/60 rounded-lg border border-zinc-800 text-xs space-y-1">
                     <div className="flex items-center justify-between text-zinc-500 font-mono text-[10px]">
                       <span>{n.usuario}</span>
-                      <span>{n.fechaHora}</span>
+                      <div className="flex items-center space-x-2">
+                        <span>{n.fechaHora}</span>
+                        {onDeleteNotaLicitacion && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteNotaLicitacion(n.id)}
+                            className="p-1 text-zinc-500 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
+                            title="Eliminar nota"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-zinc-200">{n.texto}</p>
                   </div>
@@ -1205,7 +1281,19 @@ export default function LicitacionMasterDetail({
                       <Sparkles className="w-4 h-4 text-blue-400" />
                       <span className="font-bold text-zinc-100 font-mono">Investigación IA - {inv.fechaHora}</span>
                     </div>
-                    <span className="text-[10px] text-zinc-500 font-mono">Ítem: {inv.promptBusqueda}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] text-zinc-500 font-mono">Ítem: {inv.promptBusqueda}</span>
+                      {onDeleteInvestigacionIa && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteInvestigacionIa(inv.id)}
+                          className="p-1 text-zinc-400 hover:text-red-400 hover:bg-red-950/40 rounded transition-colors cursor-pointer"
+                          title="Eliminar investigación IA"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {inv.resultadoJSON && (
@@ -1700,9 +1788,10 @@ export default function LicitacionMasterDetail({
               <ul className="text-amber-300/90 list-disc list-inside font-mono space-y-1">
                 {deletingItemDetail.countCns > 0 && <li>{deletingItemDetail.countCns} cotización(es) de proveedores</li>}
                 {deletingItemDetail.countAnx > 0 && <li>{deletingItemDetail.countAnx} archivo(s) anexo(s) adjunto(s)</li>}
+                {deletingItemDetail.countInv > 0 && <li>{deletingItemDetail.countInv} investigación(es) de IA</li>}
               </ul>
               <p className="text-zinc-400 pt-1">
-                Para eliminar este producto, remueva primero sus cotizaciones de proveedores y anexos adjuntos.
+                Para eliminar este producto, remueva primero sus cotizaciones de proveedores, anexos adjuntos e investigaciones de IA.
               </p>
             </div>
           ) : (
