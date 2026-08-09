@@ -14,7 +14,9 @@ import {
   initStorage,
   getData,
   saveData,
-  addItem
+  addItem,
+  updateItem,
+  deleteItem
 } from './services/storageService';
 import { getActiveUser, logout } from './services/authService';
 
