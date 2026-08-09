@@ -363,7 +363,7 @@ export default function LicitacionMasterDetail({
       }
     } else {
       onAddDetalle({
-        id: `DET-${Date.now().toString().slice(-4)}`,
+        id: `DET-${Date.now()}`,
         licitacionId: licitacion.id,
         descripcion: prodDesc.trim(),
         cantidadRequerida: parseInt(prodCantReq) || 1,
@@ -1677,18 +1677,23 @@ export default function LicitacionMasterDetail({
           )}
 
           <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
-            <Button variant="ghost" size="sm" onClick={() => setDeletingItemDetail(null)}>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold cursor-pointer"
+              onClick={() => setDeletingItemDetail(null)}
+            >
               Cancelar
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={deletingItemDetail?.hasData}
+            </button>
+
+            <button
+              type="button"
+              disabled={!!deletingItemDetail?.hasData}
               onClick={handleConfirmDeleteItem}
+              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Confirmar Eliminar</span>
-            </Button>
+            </button>
           </div>
         </div>
       </Modal>
