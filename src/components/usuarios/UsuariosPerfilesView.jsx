@@ -448,15 +448,21 @@ export default function UsuariosPerfilesView({
                     <div></div>
                   )}
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="px-3 py-1.5 text-xs shrink-0"
-                    onClick={() => handleOpenEditProfile(p)}
-                  >
-                    <Edit2 className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Editar</span>
-                  </Button>
+                  {!p.esProtegido ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="px-3 py-1.5 text-xs shrink-0"
+                      onClick={() => handleOpenEditProfile(p)}
+                    >
+                      <Edit2 className="w-3.5 h-3.5 shrink-0" />
+                      <span className="whitespace-nowrap">Editar</span>
+                    </Button>
+                  ) : (
+                    <span className="text-[10px] text-zinc-500 font-mono px-2 py-1 bg-zinc-900 rounded border border-zinc-800">
+                      No editable
+                    </span>
+                  )}
                 </div>
               </Card>
             );
