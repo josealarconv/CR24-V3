@@ -112,12 +112,15 @@ export default function App() {
     setNotasLicitacion(getWorkspaceData('NOTAS_LICITACION', wsId));
     setInvestigacionesIa(getWorkspaceData('INVESTIGACIONES_IA', wsId));
 
-    // Perfiles and Usuarios: filter by workspace (Creator sees all)
+    // Perfiles and Usuarios: filter by workspace
+    // PRF-SUPERADMIN (workspaceId: null) only visible in WS-CREATOR sandbox
     const allPerfiles = getData('PERFILES');
     const allUsuarios = getData('USUARIOS');
+    const isCreatorWs = wsId === 'WS-CREATOR';
+
     if (isCreator() && wsId) {
-      setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId || p.workspaceId === null));
-      setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId || u.workspaceId === null));
+      setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId || (isCreatorWs && p.workspaceId === null)));
+      setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId || (isCreatorWs && u.workspaceId === null)));
     } else if (wsId) {
       setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId));
       setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId));
