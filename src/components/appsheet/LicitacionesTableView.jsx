@@ -71,6 +71,8 @@ export default function LicitacionesTableView({
 
   // AI Registration
   const [aiFile, setAiFile] = useState(null);
+  const [aiTextContent, setAiTextContent] = useState('');
+  const [aiInputMode, setAiInputMode] = useState('text'); // 'text' | 'file'
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
   const [aiError, setAiError] = useState('');
@@ -578,54 +580,69 @@ export default function LicitacionesTableView({
 
           {/* AI Registration Zone */}
           {!editingLic && (
-            <div className="border border-indigo-800/50 rounded-xl p-3 bg-indigo-950/20 space-y-2">
+            <div className="border border-indigo-800/50 rounded-xl p-3 bg-indigo-950/20 space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Registrar con AI</span>
-                  <span className="text-zinc-500 text-[10px] font-normal">(Sube bases técnicas y la IA creará la licitación)</span>
                 </label>
+                {!aiResult && (
+                  <div className="flex text-[10px] bg-zinc-900 rounded-md border border-zinc-800 overflow-hidden">
+                    <button type="button" onClick={() => setAiInputMode('text')} className={`px-2 py-0.5 cursor-pointer transition-colors ${aiInputMode === 'text' ? 'bg-indigo-600/30 text-indigo-300' : 'text-zinc-500 hover:text-zinc-300'}`}>Pegar Texto</button>
+                    <button type="button" onClick={() => setAiInputMode('file')} className={`px-2 py-0.5 cursor-pointer transition-colors ${aiInputMode === 'file' ? 'bg-indigo-600/30 text-indigo-300' : 'text-zinc-500 hover:text-zinc-300'}`}>Subir Archivo</button>
+                  </div>
+                )}
               </div>
 
               {!aiResult ? (
-                <div>
-                  <div
-                    className="border-2 border-dashed border-indigo-800/50 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-600/70 transition-colors"
-                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500'); }}
-                    onDragLeave={(e) => { e.currentTarget.classList.remove('border-indigo-500'); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.classList.remove('border-indigo-500');
-                      const f = e.dataTransfer.files[0];
-                      if (f) setAiFile(f);
-                    }}
-                    onClick={() => document.getElementById('ai-file-input')?.click()}
-                  >
-                    <input
-                      id="ai-file-input"
-                      type="file"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
-                      className="hidden"
-                      onChange={(e) => { if (e.target.files[0]) setAiFile(e.target.files[0]); }}
-                    />
-                    {aiFile ? (
-                      <div className="flex items-center justify-center gap-2 text-indigo-300 text-xs">
-                        <FileCheck className="w-4 h-4" />
-                        <span className="font-medium">{aiFile.name}</span>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setAiFile(null); }} className="text-zinc-400 hover:text-red-400">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <Upload className="w-5 h-5 text-indigo-400 mx-auto" />
-                        <p className="text-[11px] text-zinc-400">Arrastra o haz clic para subir un documento</p>
-                        <p className="text-[10px] text-zinc-600">Word, PDF, Excel o imágenes</p>
-                      </div>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  {/* Text Mode */}
+                  {aiInputMode === 'text' && (
+                    <div>
+                      <textarea
+                        rows={5}
+                        value={aiTextContent}
+                        onChange={(e) => setAiTextContent(e.target.value)}
+                        placeholder="Pega aquí el contenido del documento de licitación (bases técnicas, solicitud de cotización, etc.)..."
+                        className="w-full p-2.5 bg-zinc-900 border border-indigo-800/40 rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-sans resize-y"
+                      />
+                      <p className="text-[10px] text-zinc-600 mt-0.5">Tip: Copia y pega el texto del documento de la plataforma de licitaciones</p>
+                    </div>
+                  )}
 
-                  {aiFile && (
+                  {/* File Mode */}
+                  {aiInputMode === 'file' && (
+                    <div
+                      className="border-2 border-dashed border-indigo-800/50 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-600/70 transition-colors"
+                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-indigo-500'); }}
+                      onDragLeave={(e) => { e.currentTarget.classList.remove('border-indigo-500'); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('border-indigo-500');
+                        const f = e.dataTransfer.files[0];
+                        if (f) setAiFile(f);
+                      }}
+                      onClick={() => document.getElementById('ai-file-input')?.click()}
+                    >
+                      <input id="ai-file-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*" className="hidden" onChange={(e) => { if (e.target.files[0]) setAiFile(e.target.files[0]); }} />
+                      {aiFile ? (
+                        <div className="flex items-center justify-center gap-2 text-indigo-300 text-xs">
+                          <FileCheck className="w-4 h-4" />
+                          <span className="font-medium">{aiFile.name}</span>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setAiFile(null); }} className="text-zinc-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <Upload className="w-5 h-5 text-indigo-400 mx-auto" />
+                          <p className="text-[11px] text-zinc-400">Arrastra o haz clic para subir</p>
+                          <p className="text-[10px] text-zinc-600">PDF, Word, Excel, TXT o imágenes</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Analyze Button */}
+                  {((aiInputMode === 'text' && aiTextContent.trim().length > 20) || (aiInputMode === 'file' && aiFile)) && (
                     <button
                       type="button"
                       disabled={aiLoading}
@@ -633,32 +650,35 @@ export default function LicitacionesTableView({
                         setAiLoading(true);
                         setAiError('');
                         try {
-                          const result = await analizarDocumentoLicitacion(aiFile);
+                          const result = await analizarDocumentoLicitacion({
+                            textContent: aiInputMode === 'text' ? aiTextContent : null,
+                            file: aiInputMode === 'file' ? aiFile : null
+                          });
                           if (result.success && result.data) {
                             const d = result.data;
-                            // Pre-fill form fields
                             if (d.numeroLicitacion) setNumLic(d.numeroLicitacion);
                             if (d.moneda) setMoneda(d.moneda);
                             if (d.fechaRecepcion) setFecha(d.fechaRecepcion);
                             if (d.fechaLimite) setFechaCot(d.fechaLimite);
                             if (d.observaciones) setNotas(d.observaciones);
-                            // Match client by name if possible
                             if (d.clienteNombre) {
                               const matchedClient = clientes.find(c => c.nombre.toLowerCase().includes(d.clienteNombre.toLowerCase()));
                               if (matchedClient) setClienteId(matchedClient.id);
                             }
                             setAiResult(d);
+                          } else {
+                            setAiError(result.error || 'No se pudo analizar el documento.');
                           }
                         } catch (err) {
-                          setAiError('Error al analizar el documento.');
+                          setAiError(err.message || 'Error al analizar el documento.');
                         } finally {
                           setAiLoading(false);
                         }
                       }}
-                      className="w-full mt-2 px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                      className="w-full px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
                     >
                       {aiLoading ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Analizando documento...</span></>
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Analizando con Gemini AI...</span></>
                       ) : (
                         <><Sparkles className="w-3.5 h-3.5" /><span>Analizar con AI</span></>
                       )}
@@ -666,30 +686,36 @@ export default function LicitacionesTableView({
                   )}
 
                   {aiError && (
-                    <p className="text-[11px] text-red-400 mt-1">{aiError}</p>
+                    <div className="p-2 bg-red-950/30 border border-red-800/40 rounded-lg text-[11px] text-red-400">
+                      <p className="font-medium">⚠️ Error: {aiError}</p>
+                    </div>
                   )}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
-                      <FileCheck className="w-3.5 h-3.5" /> Datos extraídos exitosamente
+                      <FileCheck className="w-3.5 h-3.5" /> Datos extraídos por Gemini AI
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => { setAiResult(null); setAiFile(null); }}
-                      className="text-[10px] text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                    >
-                      Reiniciar
-                    </button>
+                    <button type="button" onClick={() => { setAiResult(null); setAiFile(null); setAiTextContent(''); setAiError(''); }} className="text-[10px] text-zinc-400 hover:text-zinc-200 cursor-pointer">Reiniciar</button>
                   </div>
-                  <div className="bg-zinc-950/60 rounded-lg p-2 text-[11px] text-zinc-300 space-y-1 border border-zinc-800">
-                    <p>✅ Formulario pre-llenado con datos del documento</p>
+                  <div className="bg-zinc-950/60 rounded-lg p-2.5 text-[11px] text-zinc-300 space-y-1 border border-zinc-800">
+                    {aiResult.clienteNombre && <p>🏢 <strong>Cliente:</strong> {aiResult.clienteNombre}</p>}
+                    {aiResult.moneda && <p>💰 <strong>Moneda:</strong> {aiResult.moneda}</p>}
+                    {aiResult.fechaLimite && <p>📅 <strong>Fecha Límite:</strong> {aiResult.fechaLimite}</p>}
+                    {aiResult.observaciones && <p>📋 {aiResult.observaciones.substring(0, 120)}...</p>}
                     {aiResult.items && aiResult.items.length > 0 && (
-                      <p className="text-indigo-300">
-                        ✨ {aiResult.items.length} producto(s) detectados — se crearán automáticamente al guardar
-                      </p>
+                      <div className="pt-1.5 border-t border-zinc-800 mt-1.5">
+                        <p className="text-indigo-300 font-semibold">✨ {aiResult.items.length} producto(s) detectados:</p>
+                        <ul className="mt-1 space-y-0.5 text-zinc-400">
+                          {aiResult.items.slice(0, 5).map((it, i) => (
+                            <li key={i}>• {it.descripcion} — Cant: {it.cantidad} {it.unidad}</li>
+                          ))}
+                          {aiResult.items.length > 5 && <li className="text-zinc-500">... y {aiResult.items.length - 5} más</li>}
+                        </ul>
+                      </div>
                     )}
+                    <p className="text-emerald-400/80 pt-1">✅ Formulario pre-llenado — revisa y guarda</p>
                   </div>
                 </div>
               )}

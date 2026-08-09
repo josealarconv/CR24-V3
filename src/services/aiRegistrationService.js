@@ -1,48 +1,58 @@
-export async function analizarDocumentoLicitacion(file) {
+/**
+ * Analiza un documento de licitación usando AI (Gemini).
+ * Soporta dos modos:
+ * 1. textContent: Texto pegado directamente (más confiable, sin límite de tamaño de archivo)
+ * 2. file: Archivo subido (Word, PDF, imagen) — se envía como base64
+ *
+ * @param {Object} options
+ * @param {File} [options.file] - Archivo a analizar
+ * @param {string} [options.textContent] - Texto del documento (preferido)
+ * @returns {Promise<{success: boolean, data: Object, isDemo?: boolean, error?: string}>}
+ */
+export async function analizarDocumentoLicitacion({ file, textContent }) {
   try {
-    const base64Data = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]); // get only the base64 part
-      reader.onerror = error => reject(error);
-      reader.readAsDataURL(file);
-    });
+    const body = {};
+
+    if (textContent && textContent.trim().length > 20) {
+      // Text mode (preferred - no size limits, more reliable)
+      body.textContent = textContent.trim();
+    } else if (file) {
+      // File mode (base64 - may hit Vercel body size limits)
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+      body.fileData = base64Data;
+      body.fileType = file.type;
+      body.fileName = file.name;
+    } else {
+      throw new Error('Se requiere texto o archivo para analizar.');
+    }
 
     const response = await fetch('/api/analyze-document', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileData: base64Data,
-        fileType: file.type,
-        fileName: file.name
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.details || errData.error || `API error: ${response.status}`);
     }
 
     const result = await response.json();
     return { success: true, data: result };
 
   } catch (error) {
-    console.error('Error analyzing document, using fallback data:', error);
+    console.error('Error analyzing document:', error);
+
+    // Return error info instead of silent fallback
     return {
-      success: true,
-      data: {
-        numeroLicitacion: 'LIC-2026-DEMO-001',
-        clienteNombre: 'Cliente Detectado por IA',
-        fechaRecepcion: new Date().toISOString().split('T')[0],
-        fechaLimite: '',
-        moneda: 'CLP',
-        observaciones: `Documento analizado: ${file.name}. Datos extraídos automáticamente por IA.`,
-        items: [
-          { descripcion: 'Producto/Servicio detectado #1', cantidad: 1, unidad: 'unidad', especificaciones: 'Especificaciones extraídas del documento' },
-          { descripcion: 'Producto/Servicio detectado #2', cantidad: 2, unidad: 'unidad', especificaciones: 'Detalles técnicos del documento' },
-          { descripcion: 'Producto/Servicio detectado #3', cantidad: 5, unidad: 'unidad', especificaciones: 'Requerimientos según bases técnicas' }
-        ]
-      }
+      success: false,
+      error: error.message || 'Error desconocido al analizar el documento.',
+      data: null
     };
   }
 }
