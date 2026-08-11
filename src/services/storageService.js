@@ -253,6 +253,118 @@ export function getWorkspaceData(key, workspaceId) {
   return all.filter(item => item.workspaceId === workspaceId);
 }
 
+export function getNormalizedLicitaciones(workspaceId) {
+  const licitaciones = getWorkspaceData('LICITACIONES', workspaceId);
+  const clientes = getWorkspaceData('CLIENTES', workspaceId);
+  const proveedores = getWorkspaceData('PROVEEDORES', workspaceId);
+  const detalles = getWorkspaceData('DETALLES', workspaceId);
+  const consultas = getWorkspaceData('CONSULTAS', workspaceId);
+  const anexos = getWorkspaceData('ANEXOS', workspaceId);
+  const notas = getWorkspaceData('NOTAS_LICITACION', workspaceId);
+  const investigaciones = getWorkspaceData('INVESTIGACIONES_IA', workspaceId);
+
+  return licitaciones.map((lic) => {
+    const cliObj = clientes.find((c) => c.id === lic.clienteId);
+
+    // Build items from DETALLES if lic.items is absent or empty
+    let items = Array.isArray(lic.items) && lic.items.length > 0 ? lic.items : [];
+    if (items.length === 0) {
+      const matchDetalles = detalles.filter((d) => d.licitacionId === lic.id);
+      if (matchDetalles.length > 0) {
+        items = matchDetalles.map((d) => {
+          const matchConsultas = consultas.filter((c) => c.detalleId === d.id);
+          const itemConsultas = matchConsultas.map((c) => {
+            const prv = proveedores.find((p) => p.id === c.proveedorId);
+            return {
+              id: c.id,
+              proveedor: c.proveedor || prv?.nombre || "Proveedor",
+              contacto: c.contacto || prv?.contacto || "",
+              precioUnitario: Number(c.precioUnitario || c.precioBase || c.costoUnitarioCompuesto || 0),
+              cantidadDisponible: Number(c.cantidadDisponible || c.cantidadADespachar || d.cantidadRequerida || 1),
+              plazoDias: Number(c.plazoDias || 0),
+              validezHasta: c.validezHasta || "",
+              estado: c.estado === "Aceptada" ? "recibida" : (c.estado || "recibida"),
+              notas: c.notas || "",
+              fecha: c.fecha || lic.fecha || new Date().toISOString(),
+            };
+          });
+
+          const asignaciones = itemConsultas
+            .filter((c) => c.estado === "recibida" && c.precioUnitario > 0)
+            .map((c) => ({ consultaId: c.id, cantidad: c.cantidadDisponible }));
+
+          const matchNotas = notas.filter((n) => n.licitacionId === lic.id).map((n) => ({
+            id: n.id,
+            texto: n.texto,
+            fecha: n.fechaHora || new Date().toISOString()
+          }));
+
+          const matchInv = investigaciones.filter((i) => i.detalleId === d.id).map((i) => ({
+            id: i.id,
+            consulta: "Análisis técnico preliminar",
+            resultado: typeof i.resultadoJSON === "object" ? JSON.stringify(i.resultadoJSON, null, 2) : String(i.resultadoJSON || ""),
+            fecha: i.fechaHora || new Date().toISOString()
+          }));
+
+          return {
+            id: d.id,
+            descripcion: d.descripcion || "Ítem sin descripción",
+            cantidad: Number(d.cantidadRequerida || d.cantidadACotizar || 1),
+            unidad: d.unidad || "und",
+            especificaciones: d.notas || "",
+            margenOverride: "",
+            notas: matchNotas,
+            investigaciones: matchInv,
+            adjuntos: [],
+            consultas: itemConsultas,
+            asignaciones: asignaciones,
+          };
+        });
+      } else {
+        // Fallback default item
+        items = [{
+          id: `det-${Math.random().toString(36).slice(2, 8)}`,
+          descripcion: lic.notas || "Ítem inicial",
+          cantidad: 1,
+          unidad: "und",
+          especificaciones: lic.notasCotizacion || "",
+          margenOverride: "",
+          notas: [],
+          investigaciones: [],
+          adjuntos: [],
+          consultas: [],
+          asignaciones: [],
+        }];
+      }
+    }
+
+    const matchAnexos = anexos.filter((a) => a.licitacionId === lic.id).map((a) => ({
+      id: a.id,
+      nombre: a.nombreArchivo || a.descripcion || "Archivo anexo",
+      url: a.url || a.archivoUrl || "",
+      fecha: a.fechaCarga || new Date().toISOString()
+    }));
+
+    return {
+      ...lic,
+      id: lic.id,
+      titulo: lic.titulo || lic.numeroLicitacion || "Licitación sin título",
+      cliente: lic.cliente || cliObj?.nombre || "",
+      referencia: lic.referencia || lic.numeroLicitacion || "",
+      portalUrl: lic.portalUrl || "",
+      fechaPublicacion: lic.fechaPublicacion || lic.fecha || "",
+      fechaLimite: lic.fechaLimite || lic.fechaCotizacion || "",
+      estado: lic.estado || "nueva",
+      notasGenerales: lic.notasGenerales || lic.notas || "",
+      config: lic.config || { margenGlobal: 20, moneda: lic.moneda || "USD", iva: 0 },
+      adjuntos: Array.isArray(lic.adjuntos) && lic.adjuntos.length > 0 ? lic.adjuntos : matchAnexos,
+      items: items,
+      cotizacionesEmitidas: Array.isArray(lic.cotizacionesEmitidas) ? lic.cotizacionesEmitidas : [],
+    };
+  });
+}
+
+
 export function saveData(key, data) {
   try {
     const storageKey = KEYS[key.toUpperCase()];

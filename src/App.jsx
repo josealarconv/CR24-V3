@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/common/Header';
 import LoginScreen from './components/auth/LoginScreen';
-import LicitacionesTableView from './components/appsheet/LicitacionesTableView';
-import LicitacionMasterDetail from './components/appsheet/LicitacionMasterDetail';
+import LicitacionMasterDetail from './components/licitaciones/LicitacionMasterDetail';
 import ConsultasTableView from './components/appsheet/ConsultasTableView';
 import CotizacionesTableView from './components/appsheet/CotizacionesTableView';
 import AnexosTableView from './components/appsheet/AnexosTableView';
 import ClientesList from './components/clientes/ClientesList';
 import ProveedoresList from './components/proveedores/ProveedoresList';
-import UsuariosPerfilesView from './components/usuarios/UsuariosPerfilesView';
 import ConfiguracionView from './components/configuracion/ConfiguracionView';
+import {
+  ConfirmProvider, useConfirm, Badge, TextInput, PrimaryBtn, Empty
+} from './components/ui/Components';
 import {
   initStorage,
   getData,
   getWorkspaceData,
+  getNormalizedLicitaciones,
   saveData,
   addItem,
   updateItem,
@@ -28,46 +30,70 @@ import {
   getActiveWorkspace,
   getActiveWorkspaceId,
   setActiveWorkspace,
-  getUserWorkspaces,
   isCreator,
-  logout
 } from './services/authService';
+import {
+  estadoInfo, emptyLicitacion, fmtMoney, num
+} from './services/calculationService';
+import {
+  Search, Plus, PackageSearch, Building2, Clock
+} from 'lucide-react';
 
-export default function App() {
+/* Sidebar Tender List Item Card */
+function Tarjeta({ lic, activa, onClick }) {
+  const info = estadoInfo(lic.estado);
+  const dias = lic.fechaLimite ? Math.ceil((new Date(lic.fechaLimite) - new Date()) / 86400000) : null;
+  const cotizaciones = lic.cotizacionesEmitidas || [];
+  const ultima = [...cotizaciones].sort((a, b) => b.version - a.version)[0];
+  const itemsCount = (lic.items || []).length;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-xl border px-3.5 py-3 text-left transition cursor-pointer ${
+        activa ? "border-[#2B3A67] bg-[#EEF0F7]" : "border-[#EDEFF3] bg-white hover:border-[#C7CCD6]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#131A2C]">{lic.titulo || "Sin título"}</p>
+        <Badge color={info.color} bg={info.bg}>{info.label}</Badge>
+      </div>
+      <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-[#8A93A6]">
+        <Building2 size={11} />{lic.cliente || "Cliente sin definir"}
+      </p>
+      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[#A6ADBB]">
+        <span className="flex items-center gap-1"><PackageSearch size={11} />{itemsCount} ítem(s)</span>
+        {ultima && <span className="font-mono text-[#131A2C]">v{ultima.version} · {fmtMoney(ultima.totalVenta, ultima.moneda)}</span>}
+        {dias != null && (
+          <span className={dias < 0 ? "font-semibold text-[#B3261E]" : dias <= 3 ? "font-semibold text-[#B45309]" : ""}>
+            {dias < 0 ? "Vencida" : `${dias}d`}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function MainAppContent() {
   const [activeView, setActiveView] = useState('licitaciones');
-  const [selectedLicitacion, setSelectedLicitacion] = useState(null);
-
-  // Filter States
+  const [selectedLicitacionId, setSelectedLicitacionId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('2026-08');
-
-  // Auth State
+  const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [currentUser, setCurrentUser] = useState(null);
-
-  // Workspace State
   const [activeWs, setActiveWs] = useState(null);
   const [allWorkspaces, setAllWorkspaces] = useState([]);
+  const [dataVersion, setDataVersion] = useState(0);
+  const [mobileVista, setMobileVista] = useState('lista'); // 'lista' | 'detalle'
 
-  // Data Store (filtered by active workspace)
-  const [licitaciones, setLicitaciones] = useState([]);
-  const [clientes, setClientes] = useState([]);
-  const [proveedores, setProveedores] = useState([]);
-  const [detalles, setDetalles] = useState([]);
-  const [consultas, setConsultas] = useState([]);
-  const [cotizaciones, setCotizaciones] = useState([]);
-  const [anexos, setAnexos] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
-  const [perfiles, setPerfiles] = useState([]);
-  const [notasLicitacion, setNotasLicitacion] = useState([]);
-  const [investigacionesIa, setInvestigacionesIa] = useState([]);
-  const [configuracion, setConfiguracion] = useState({});
+  const confirming = useConfirm();
 
   useEffect(() => {
     initStorage();
     setCurrentUser(getActiveUser());
     refreshWorkspace();
 
-    const handleStorageUpdate = () => loadWorkspaceData();
+    const handleStorageUpdate = () => setDataVersion((v) => v + 1);
     const handleAuthChange = () => {
       setCurrentUser(getActiveUser());
       refreshWorkspace();
@@ -91,200 +117,139 @@ export default function App() {
     const ws = getActiveWorkspace();
     setActiveWs(ws);
     setAllWorkspaces(getWorkspaces());
-    loadWorkspaceData();
+    setDataVersion((v) => v + 1);
   };
 
-  // Load data filtered by the active workspace
-  const loadWorkspaceData = () => {
-    const wsId = getActiveWorkspaceId();
-    setAllWorkspaces(getWorkspaces());
-    const ws = getActiveWorkspace();
-    setActiveWs(ws);
+  const wsId = getActiveWorkspaceId();
 
-    // Workspace-scoped data
-    setLicitaciones(getWorkspaceData('LICITACIONES', wsId));
-    setClientes(getWorkspaceData('CLIENTES', wsId));
-    setProveedores(getWorkspaceData('PROVEEDORES', wsId));
-    setDetalles(getWorkspaceData('DETALLES', wsId));
-    setConsultas(getWorkspaceData('CONSULTAS', wsId));
-    setCotizaciones(getWorkspaceData('COTIZACIONES', wsId));
-    setAnexos(getWorkspaceData('ANEXOS', wsId));
-    setNotasLicitacion(getWorkspaceData('NOTAS_LICITACION', wsId));
-    setInvestigacionesIa(getWorkspaceData('INVESTIGACIONES_IA', wsId));
+  // Load normalized workspace-scoped licitaciones
+  const licitaciones = getNormalizedLicitaciones(wsId);
+  const clientes = getWorkspaceData('CLIENTES', wsId);
+  const proveedores = getWorkspaceData('PROVEEDORES', wsId);
+  const detalles = getWorkspaceData('DETALLES', wsId);
+  const consultas = getWorkspaceData('CONSULTAS', wsId);
+  const cotizaciones = getWorkspaceData('COTIZACIONES', wsId);
+  const anexos = getWorkspaceData('ANEXOS', wsId);
+  const usuarios = getData('USUARIOS').filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null));
+  const perfiles = getData('PERFILES').filter(p => p.workspaceId === wsId || (wsId === 'WS-CREATOR' && p.workspaceId === null));
+  const configuracion = activeWs?.config || getData('CONFIGURACION') || {};
 
-    // Perfiles and Usuarios: filter by workspace
-    // PRF-SUPERADMIN (workspaceId: null) only visible in WS-CREATOR sandbox
-    const allPerfiles = getData('PERFILES');
-    const allUsuarios = getData('USUARIOS');
-    const isCreatorWs = wsId === 'WS-CREATOR';
-
-    if (isCreator() && wsId) {
-      setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId || (isCreatorWs && p.workspaceId === null)));
-      setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId || (isCreatorWs && u.workspaceId === null)));
-    } else if (wsId) {
-      setPerfiles(allPerfiles.filter(p => p.workspaceId === wsId));
-      setUsuarios(allUsuarios.filter(u => u.workspaceId === wsId));
-    } else {
-      setPerfiles(allPerfiles);
-      setUsuarios(allUsuarios);
+  // Default selection
+  useEffect(() => {
+    if (licitaciones.length > 0 && !selectedLicitacionId) {
+      setSelectedLicitacionId(licitaciones[0].id);
     }
-
-    // Configuration from workspace
-    setConfiguracion(ws?.config || getData('CONFIGURACION') || {});
-  };
-
-  const handleWorkspaceSwitch = (wsId) => {
-    setActiveWorkspace(wsId);
-    setSelectedLicitacion(null);
-    setActiveView('licitaciones');
-  };
+  }, [licitaciones, selectedLicitacionId]);
 
   if (!currentUser) {
     return <LoginScreen onLoginSuccess={(u) => setCurrentUser(u)} />;
   }
 
-  // Monthly & Global Search Filtering
-  const filteredLicitaciones = licitaciones.filter(lic => {
+  const handleWorkspaceSwitch = (newWsId) => {
+    setActiveWorkspace(newWsId);
+    setSelectedLicitacionId(null);
+    setActiveView('licitaciones');
+  };
+
+  const filteredLicitaciones = licitaciones.filter((l) => {
     const q = searchTerm.trim().toLowerCase();
-    if (q) {
-      const cli = clientes.find(c => c.id === lic.clienteId);
-      const cliNombre = cli ? cli.nombre.toLowerCase() : '';
-      const numLic = (lic.numeroLicitacion || lic.id).toLowerCase();
-      const notas = (lic.notas || '').toLowerCase();
-      return numLic.includes(q) || cliNombre.includes(q) || notas.includes(q);
-    }
-    if (selectedMonth !== 'ALL') {
-      if (lic.fecha && !lic.fecha.startsWith(selectedMonth)) return false;
+    const queryMatch = `${l.titulo} ${l.cliente} ${l.referencia} ${l.notasGenerales}`.toLowerCase().includes(q);
+    if (!queryMatch) return false;
+    if (selectedMonth !== 'ALL' && l.fechaPublicacion && !l.fechaPublicacion.startsWith(selectedMonth)) {
+      return false;
     }
     return true;
   });
 
-  // Get active workspaceId for injecting into new records
-  const wsId = getActiveWorkspaceId();
+  const selectedLicitacion = licitaciones.find((l) => l.id === selectedLicitacionId) || filteredLicitaciones[0] || null;
 
-  const handleAddLicitacion = (newLic) => {
-    const updated = addItem('LICITACIONES', { ...newLic, workspaceId: wsId, createdBy: currentUser.email });
-    setLicitaciones(updated.filter(l => l.workspaceId === wsId));
-    setSelectedLicitacion(newLic);
-  };
-
-  const handleEditLicitacion = (updatedLic) => {
-    const allData = getData('LICITACIONES');
-    const updated = allData.map(l => l.id === updatedLic.id ? { ...l, ...updatedLic } : l);
+  const updateSelectedLicitacion = (nextLic) => {
+    const allLics = getData('LICITACIONES');
+    const updated = allLics.map((l) => (l.id === nextLic.id ? { ...l, ...nextLic } : l));
     saveData('LICITACIONES', updated);
-    setLicitaciones(updated.filter(l => l.workspaceId === wsId));
-    if (selectedLicitacion && selectedLicitacion.id === updatedLic.id) {
-      setSelectedLicitacion(prev => ({ ...prev, ...updatedLic }));
-    }
+    setDataVersion((v) => v + 1);
   };
 
-  const handleDeleteLicitacion = (licId) => {
-    deleteItem('LICITACIONES', 'id', licId);
-    setLicitaciones(prev => prev.filter(l => String(l.id).trim() !== String(licId).trim()));
-    if (selectedLicitacion && selectedLicitacion.id === licId) {
-      setSelectedLicitacion(null);
-    }
+  const crearLicitacion = () => {
+    const l = { ...emptyLicitacion(), workspaceId: wsId, createdBy: currentUser.email };
+    const allLics = getData('LICITACIONES');
+    saveData('LICITACIONES', [l, ...allLics]);
+    setSelectedLicitacionId(l.id);
+    setMobileVista('detalle');
+    setDataVersion((v) => v + 1);
   };
 
-  const handleUpdateEstatusLicitacion = (licId, newEstatus) => {
-    const allData = getData('LICITACIONES');
-    const updated = allData.map(l => l.id === licId ? { ...l, estatus: newEstatus } : l);
-    saveData('LICITACIONES', updated);
-    setLicitaciones(updated.filter(l => l.workspaceId === wsId));
-    if (selectedLicitacion && selectedLicitacion.id === licId) {
-      setSelectedLicitacion(prev => ({ ...prev, estatus: newEstatus }));
-    }
+  const eliminarLicitacion = async () => {
+    if (!selectedLicitacion) return;
+    const itemsCount = (selectedLicitacion.items || []).length;
+    const ok = await confirming({
+      titulo: "¿Eliminar la licitación completa?",
+      mensaje: selectedLicitacion.titulo || "Sin título",
+      detalle: `Se borrarán sus ${itemsCount} ítem(s) junto con sus notas, investigaciones y adjuntos.`,
+      textoConfirmar: "Eliminar todo",
+    });
+    if (!ok) return;
+
+    deleteItem('LICITACIONES', 'id', selectedLicitacion.id);
+    const remaining = licitaciones.filter((l) => l.id !== selectedLicitacion.id);
+    setSelectedLicitacionId(remaining[0]?.id ?? null);
+    setMobileVista('lista');
+    setDataVersion((v) => v + 1);
   };
 
-  const handleAddDetalle = (newDetalle) => {
-    const updated = addItem('DETALLES', { ...newDetalle, workspaceId: wsId });
-    setDetalles(updated.filter(d => d.workspaceId === wsId));
+  const handleAddCliente = (newCli) => {
+    const updated = addItem('CLIENTES', { ...newCli, workspaceId: wsId });
+    setDataVersion((v) => v + 1);
   };
 
-  const handleEditDetalle = (updatedDetalle) => {
-    if (!updatedDetalle) return;
-    const targetIdStr = String(updatedDetalle.id || updatedDetalle.detalleId || '').trim();
-    updateItem('DETALLES', 'id', targetIdStr, updatedDetalle);
-    setDetalles(prev => prev.map(d => String(d.id || d.detalleId || '').trim() === targetIdStr ? { ...d, ...updatedDetalle } : d));
+  const handleEditCliente = (updatedCliente) => {
+    if (!updatedCliente) return;
+    const allData = getData('CLIENTES');
+    const updated = allData.map(c => c.id === updatedCliente.id ? { ...c, ...updatedCliente } : c);
+    saveData('CLIENTES', updated);
+    setDataVersion((v) => v + 1);
   };
 
-  const handleDeleteDetalle = (detalleId) => {
-    if (!detalleId) return;
-    const targetIdStr = String(detalleId).trim();
-    deleteItem('DETALLES', 'id', targetIdStr);
-    deleteItem('CONSULTAS', 'detalleId', targetIdStr);
-    deleteItem('INVESTIGACIONES_IA', 'detalleId', targetIdStr);
-    setDetalles(prev => prev.filter(d => String(d.id || d.detalleId || '').trim() !== targetIdStr));
-    setConsultas(prev => prev.filter(c => String(c.detalleId || '').trim() !== targetIdStr));
-    setInvestigacionesIa(prev => prev.filter(i => String(i.detalleId || '').trim() !== targetIdStr));
+  const handleDeleteCliente = (clienteId) => {
+    if (!clienteId) return;
+    deleteItem('CLIENTES', 'id', clienteId);
+    setDataVersion((v) => v + 1);
   };
 
-  const handleAddConsulta = (newConsulta) => {
-    const updated = addItem('CONSULTAS', { ...newConsulta, workspaceId: wsId });
-    setConsultas(updated.filter(c => c.workspaceId === wsId));
+  const handleAddProveedor = (newPrv) => {
+    const updated = addItem('PROVEEDORES', { ...newPrv, workspaceId: wsId });
+    setDataVersion((v) => v + 1);
   };
 
-  const handleEditConsulta = (updatedConsulta) => {
-    const updated = updateItem('CONSULTAS', updatedConsulta);
-    setConsultas(updated.filter(c => c.workspaceId === wsId));
+  const handleEditProveedor = (updatedProveedor) => {
+    if (!updatedProveedor) return;
+    const allData = getData('PROVEEDORES');
+    const updated = allData.map(p => p.id === updatedProveedor.id ? { ...p, ...updatedProveedor } : p);
+    saveData('PROVEEDORES', updated);
+    setDataVersion((v) => v + 1);
   };
 
-  const handleAddAnexo = (newAnx) => {
-    const updated = addItem('ANEXOS', { ...newAnx, workspaceId: wsId });
-    setAnexos(updated.filter(a => a.workspaceId === wsId));
+  const handleDeleteProveedor = (proveedorId) => {
+    if (!proveedorId) return;
+    deleteItem('PROVEEDORES', 'id', proveedorId);
+    setDataVersion((v) => v + 1);
   };
 
   const handleDeleteAnexo = (anexoId) => {
-    const targetIdStr = String(anexoId).trim();
-    deleteItem('ANEXOS', 'id', targetIdStr);
-    setAnexos(prev => prev.filter(a => String(a.id || '').trim() !== targetIdStr));
+    deleteItem('ANEXOS', 'id', String(anexoId).trim());
+    setDataVersion((v) => v + 1);
   };
 
-  const handleAddNotaLicitacion = (newNota) => {
-    const updated = addItem('NOTAS_LICITACION', { ...newNota, workspaceId: wsId });
-    setNotasLicitacion(updated.filter(n => n.workspaceId === wsId));
-  };
-
-  const handleAddInvestigacionIa = (newInv) => {
-    const updated = addItem('INVESTIGACIONES_IA', { ...newInv, workspaceId: wsId });
-    setInvestigacionesIa(updated.filter(i => i.workspaceId === wsId));
-  };
-
-  const handleAddCotizacionVersion = (newCot) => {
-    const updated = addItem('COTIZACIONES', { ...newCot, workspaceId: wsId });
-    setCotizaciones(updated.filter(c => c.workspaceId === wsId));
-  };
-
-  const handleDeleteConsulta = (consultaId) => {
-    if (!consultaId) return;
-    const targetIdStr = String(consultaId).trim();
-    deleteItem('CONSULTAS', 'id', targetIdStr);
-    setConsultas(prev => prev.filter(c => String(c.id || '').trim() !== targetIdStr));
-  };
-
-  const handleDeleteNotaLicitacion = (notaId) => {
-    if (!notaId) return;
-    const targetIdStr = String(notaId).trim();
-    deleteItem('NOTAS_LICITACION', 'id', targetIdStr);
-    setNotasLicitacion(prev => prev.filter(n => String(n.id || '').trim() !== targetIdStr));
-  };
-
-  const handleDeleteInvestigacionIa = (invId) => {
-    if (!invId) return;
-    const targetIdStr = String(invId).trim();
-    deleteItem('INVESTIGACIONES_IA', 'id', targetIdStr);
-    setInvestigacionesIa(prev => prev.filter(i => String(i.id || '').trim() !== targetIdStr));
-  };
-
-  const handleDeleteCotizacion = (cotId) => {
-    if (!cotId) return;
-    const targetIdStr = String(cotId).trim();
-    deleteItem('COTIZACIONES', 'id', targetIdStr);
-    setCotizaciones(prev => prev.filter(c => String(c.id || '').trim() !== targetIdStr));
+  const handleSaveConfig = (newConfig) => {
+    if (activeWs) {
+      updateWorkspace(activeWs.id, { config: newConfig });
+      setActiveWs((prev) => (prev ? { ...prev, config: newConfig } : prev));
+    }
+    saveData('CONFIGURACION', newConfig);
+    setDataVersion((v) => v + 1);
   };
 
   const handleSaveUsuario = (userObj) => {
-    // Inject workspaceId if not present
     const userWithWs = userObj.workspaceId ? userObj : { ...userObj, workspaceId: wsId };
     const allUsuarios = getData('USUARIOS');
     const existingIndex = allUsuarios.findIndex(u => u.email.toLowerCase() === userWithWs.email.toLowerCase());
@@ -296,14 +261,14 @@ export default function App() {
       updated = [...allUsuarios, userWithWs];
     }
     saveData('USUARIOS', updated);
-    setUsuarios(updated.filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null)));
+    setDataVersion((v) => v + 1);
   };
 
   const handleToggleUsuarioActivo = (email) => {
     const allUsuarios = getData('USUARIOS');
     const updated = allUsuarios.map(u => u.email.toLowerCase() === email.toLowerCase() ? { ...u, activo: !u.activo } : u);
     saveData('USUARIOS', updated);
-    setUsuarios(updated.filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null)));
+    setDataVersion((v) => v + 1);
   };
 
   const handleDeleteUsuario = (email) => {
@@ -311,7 +276,7 @@ export default function App() {
     const allUsuarios = getData('USUARIOS');
     const updated = allUsuarios.filter(u => u.email.toLowerCase() !== email.toLowerCase());
     saveData('USUARIOS', updated);
-    setUsuarios(updated.filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null)));
+    setDataVersion((v) => v + 1);
   };
 
   const handleSavePerfil = (perfilObj) => {
@@ -326,7 +291,7 @@ export default function App() {
       updated = [...allPerfiles, perfilWithWs];
     }
     saveData('PERFILES', updated);
-    setPerfiles(updated.filter(p => p.workspaceId === wsId || (wsId === 'WS-CREATOR' && p.workspaceId === null)));
+    setDataVersion((v) => v + 1);
   };
 
   const handleDeletePerfil = (perfilId) => {
@@ -338,61 +303,9 @@ export default function App() {
     if (allUsuarios.some(u => u.perfilId === perfilId)) return;
     const updated = allPerfiles.filter(p => p.id !== perfilId);
     saveData('PERFILES', updated);
-    setPerfiles(updated.filter(p => p.workspaceId === wsId || (wsId === 'WS-CREATOR' && p.workspaceId === null)));
+    setDataVersion((v) => v + 1);
   };
 
-  const handleAddCliente = (newCli) => {
-    const updated = addItem('CLIENTES', { ...newCli, workspaceId: wsId });
-    setClientes(updated.filter(c => c.workspaceId === wsId));
-  };
-
-  const handleEditCliente = (updatedCliente) => {
-    if (!updatedCliente) return;
-    const allData = getData('CLIENTES');
-    const updated = allData.map(c => c.id === updatedCliente.id ? { ...c, ...updatedCliente } : c);
-    saveData('CLIENTES', updated);
-    setClientes(updated.filter(c => c.workspaceId === wsId));
-  };
-
-  const handleDeleteCliente = (clienteId) => {
-    if (!clienteId) return;
-    deleteItem('CLIENTES', 'id', clienteId);
-    setClientes(prev => prev.filter(c => c.id !== clienteId));
-  };
-
-  const handleAddProveedor = (newPrv) => {
-    const updated = addItem('PROVEEDORES', { ...newPrv, workspaceId: wsId });
-    setProveedores(updated.filter(p => p.workspaceId === wsId));
-  };
-
-  const handleEditProveedor = (updatedProveedor) => {
-    if (!updatedProveedor) return;
-    const allData = getData('PROVEEDORES');
-    const updated = allData.map(p => p.id === updatedProveedor.id ? { ...p, ...updatedProveedor } : p);
-    saveData('PROVEEDORES', updated);
-    setProveedores(updated.filter(p => p.workspaceId === wsId));
-  };
-
-  const handleDeleteProveedor = (proveedorId) => {
-    if (!proveedorId) return;
-    deleteItem('PROVEEDORES', 'id', proveedorId);
-    setProveedores(prev => prev.filter(p => p.id !== proveedorId));
-  };
-
-  const handleSaveConfig = (newConfig) => {
-    // Save config into the active workspace
-    if (activeWs) {
-      updateWorkspace(activeWs.id, { config: newConfig });
-      setActiveWs(prev => prev ? { ...prev, config: newConfig } : prev);
-    }
-    // Legacy compat
-    saveData('CONFIGURACION', newConfig);
-    setConfiguracion(newConfig);
-  };
-
-  // ============================================================
-  // WORKSPACE CRUD (Creator only)
-  // ============================================================
   const handleAddWorkspace = (wsObj) => {
     addWorkspace(wsObj);
     refreshWorkspace();
@@ -403,23 +316,21 @@ export default function App() {
     refreshWorkspace();
   };
 
-  const handleDeleteWorkspaceAction = (wsId) => {
-    deleteWorkspace(wsId);
-    // If we just deleted the active workspace, switch to creator's
-    if (wsId === getActiveWorkspaceId()) {
+  const handleDeleteWorkspaceAction = (wsIdToDelete) => {
+    deleteWorkspace(wsIdToDelete);
+    if (wsIdToDelete === getActiveWorkspaceId()) {
       setActiveWorkspace('WS-CREATOR');
     }
     refreshWorkspace();
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white w-full">
-      {/* 100% Screen Width Header */}
+    <div style={{ fontFamily: "'Inter',sans-serif" }} className="min-h-screen bg-[#F5F6F8] text-[#131A2C] flex flex-col w-full">
       <Header
         activeView={activeView}
         setActiveView={(v) => {
           setActiveView(v);
-          setSelectedLicitacion(null);
+          setMobileVista('lista');
         }}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -440,60 +351,64 @@ export default function App() {
         onLogout={() => setCurrentUser(null)}
       />
 
-      {/* 100% Screen Width Main Content Container */}
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto flex-1 w-full max-w-[1400px] px-4 py-4">
         {activeView === 'licitaciones' && (
-          selectedLicitacion ? (
-            <LicitacionMasterDetail
-              licitacion={selectedLicitacion}
-              cliente={clientes.find(c => c.id === selectedLicitacion.clienteId)}
-              detalles={detalles.filter(d => d.licitacionId === selectedLicitacion.id)}
-              consultas={consultas.filter(c => detalles.some(d => d.id === c.detalleId && d.licitacionId === selectedLicitacion.id))}
-              proveedores={proveedores}
-              anexos={anexos.filter(a => a.licitacionId === selectedLicitacion.id)}
-              notasLicitacion={notasLicitacion.filter(n => n.licitacionId === selectedLicitacion.id)}
-              investigacionesIa={investigacionesIa.filter(i => detalles.some(d => d.id === i.detalleId && d.licitacionId === selectedLicitacion.id))}
-              cotizaciones={cotizaciones.filter(c => c.licitacionId === selectedLicitacion.id)}
-              currentUser={currentUser}
-              onBack={() => setSelectedLicitacion(null)}
-              onAddDetalle={handleAddDetalle}
-              onEditDetalle={handleEditDetalle}
-              onDeleteDetalle={handleDeleteDetalle}
-              onAddConsulta={handleAddConsulta}
-              onEditConsulta={handleEditConsulta}
-              onDeleteConsulta={handleDeleteConsulta}
-              onAddAnexo={handleAddAnexo}
-              onDeleteAnexo={handleDeleteAnexo}
-              onAddNotaLicitacion={handleAddNotaLicitacion}
-              onDeleteNotaLicitacion={handleDeleteNotaLicitacion}
-              onAddInvestigacionIa={handleAddInvestigacionIa}
-              onDeleteInvestigacionIa={handleDeleteInvestigacionIa}
-              onAddCotizacionVersion={handleAddCotizacionVersion}
-              onDeleteCotizacion={handleDeleteCotizacion}
-              onUpdateEstatus={handleUpdateEstatusLicitacion}
-              onAddProveedor={handleAddProveedor}
-            />
-          ) : (
-            <LicitacionesTableView
-              licitaciones={filteredLicitaciones}
-              clientes={clientes}
-              detalles={detalles}
-              anexos={anexos}
-              cotizaciones={cotizaciones}
-              notasLicitacion={notasLicitacion}
-              selectedMonth={selectedMonth}
-              setSelectedMonth={setSelectedMonth}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              onSelectLicitacion={(lic) => setSelectedLicitacion(lic)}
-              onAddLicitacion={handleAddLicitacion}
-              onEditLicitacion={handleEditLicitacion}
-              onDeleteLicitacion={handleDeleteLicitacion}
-              onAddAnexo={handleAddAnexo}
-              onAddCliente={handleAddCliente}
-              onAddDetalle={handleAddDetalle}
-            />
-          )
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-[330px_1fr]">
+            {/* Left Sidebar: Search + Cards List */}
+            <aside className={`space-y-3 ${mobileVista === "detalle" ? "hidden md:block" : ""}`}>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A6ADBB]" />
+                  <TextInput placeholder="Buscar licitación…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8" />
+                </div>
+                <PrimaryBtn onClick={crearLicitacion} className="whitespace-nowrap">
+                  <Plus size={16} strokeWidth={2.5} />Nueva
+                </PrimaryBtn>
+              </div>
+
+              {filteredLicitaciones.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#DDE1E8] bg-white px-4 py-7 text-center">
+                  <PackageSearch size={20} className="mx-auto mb-2 text-[#C7CCD6]" />
+                  <p className="mb-3 text-sm text-[#8A93A6]">
+                    {licitaciones.length === 0 ? "No hay licitaciones aún." : "Ningún resultado."}
+                  </p>
+                  {licitaciones.length === 0 && (
+                    <PrimaryBtn onClick={crearLicitacion} className="mx-auto">
+                      <Plus size={16} strokeWidth={2.5} />Crear primera licitación
+                    </PrimaryBtn>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredLicitaciones.map((l) => (
+                    <Tarjeta
+                      key={l.id}
+                      lic={l}
+                      activa={selectedLicitacion?.id === l.id}
+                      onClick={() => {
+                        setSelectedLicitacionId(l.id);
+                        setMobileVista('detalle');
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </aside>
+
+            {/* Right Main Section: Master-Detail view */}
+            <section className={mobileVista === "lista" ? "hidden md:block" : ""}>
+              {selectedLicitacion ? (
+                <LicitacionMasterDetail
+                  licitacion={selectedLicitacion}
+                  onChange={updateSelectedLicitacion}
+                  onDelete={eliminarLicitacion}
+                  onBack={() => setMobileVista('lista')}
+                />
+              ) : (
+                <Empty>Selecciona o crea una licitación para comenzar.</Empty>
+              )}
+            </section>
+          </div>
         )}
 
         {activeView === 'clientes' && (
@@ -562,5 +477,13 @@ export default function App() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ConfirmProvider>
+      <MainAppContent />
+    </ConfirmProvider>
   );
 }
