@@ -24,7 +24,9 @@ export default function Header({
   activeWorkspace,
   allWorkspaces = [],
   onWorkspaceSwitch,
-  onLogout
+  onLogout,
+  isPinned = false,
+  onTogglePin
 }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('Sincronizado');
@@ -32,10 +34,6 @@ export default function Header({
   const [userProfile, setUserProfile] = useState(getUserProfile(activeUser));
   const [showWsDropdown, setShowWsDropdown] = useState(false);
 
-  // Pin & Hover State (Web Mode)
-  const [isPinned, setIsPinned] = useState(() => {
-    return localStorage.getItem('cr24_nav_pinned') === 'true';
-  });
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -68,15 +66,6 @@ export default function Header({
     };
   }, []);
 
-  const togglePin = () => {
-    setIsPinned((prev) => {
-      const next = !prev;
-      localStorage.setItem('cr24_nav_pinned', String(next));
-      return next;
-    });
-  };
-
-  // Exactly 4 sections as requested by the user
   const navItems = [
     { id: 'licitaciones', label: 'Licitaciones', icon: FileText, count: counts.licitaciones },
     { id: 'clientes', label: 'Clientes', icon: Users, count: counts.clientes },
@@ -90,9 +79,9 @@ export default function Header({
 
   return (
     <>
-      {/* Top Header Bar */}
+      {/* Top Header Bar (Full width across screen) */}
       <header className="sticky top-0 z-40 w-full border-b border-[#EDEFF3] bg-white shadow-xs">
-        <div className="flex items-center justify-between px-4 py-2.5">
+        <div className="flex w-full items-center justify-between px-4 py-2.5">
           {/* Left: Brand Logo & Title & Workspace Dropdown */}
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2B3A67] text-white shadow-xs">
@@ -110,7 +99,7 @@ export default function Header({
                     onClick={() => setShowWsDropdown(!showWsDropdown)}
                     className="inline-flex items-center gap-1 rounded-md bg-[#EEF0F7] px-2 py-0.5 text-xs font-semibold text-[#2B3A67] transition hover:bg-[#E7EAF3] cursor-pointer"
                   >
-                    <span className="max-w-[140px] truncate">{workspaceName}</span>
+                    <span className="max-w-[180px] truncate">{workspaceName}</span>
                     <ChevronDown size={12} />
                   </button>
                   {showWsDropdown && (
@@ -253,7 +242,7 @@ export default function Header({
         <div className="p-2 border-t border-[#EDEFF3]">
           <button
             type="button"
-            onClick={togglePin}
+            onClick={onTogglePin}
             title={isPinned ? "Desfijar menú lateral (auto-colapsar solo iconos)" : "Fijar menú lateral expandido"}
             className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold transition cursor-pointer ${
               isPinned

@@ -82,6 +82,11 @@ function MainAppContent() {
   const [dataVersion, setDataVersion] = useState(0);
   const [mobileVista, setMobileVista] = useState('lista'); // 'lista' | 'detalle'
 
+  // Pin state for adjusting main workspace padding dynamically
+  const [isPinned, setIsPinned] = useState(() => {
+    return localStorage.getItem('cr24_nav_pinned') === 'true';
+  });
+
   const confirming = useConfirm();
 
   useEffect(() => {
@@ -108,6 +113,14 @@ function MainAppContent() {
       window.removeEventListener('workspace-changed', handleWorkspaceChange);
     };
   }, []);
+
+  const handleTogglePin = () => {
+    setIsPinned((prev) => {
+      const next = !prev;
+      localStorage.setItem('cr24_nav_pinned', String(next));
+      return next;
+    });
+  };
 
   const refreshWorkspace = () => {
     const ws = getActiveWorkspace();
@@ -330,12 +343,16 @@ function MainAppContent() {
         allWorkspaces={allWorkspaces}
         onWorkspaceSwitch={handleWorkspaceSwitch}
         onLogout={() => setCurrentUser(null)}
+        isPinned={isPinned}
+        onTogglePin={handleTogglePin}
       />
 
-      {/* Main Content Area: Padding left on web to account for vertical sidebar */}
-      <main className="mx-auto flex-1 w-full max-w-[1400px] px-4 py-4 md:pl-20 transition-all duration-300">
+      {/* Full-width Main Content Area with dynamic left padding based on sidebar pin state */}
+      <main className={`flex-1 w-full px-4 sm:px-6 py-4 transition-[padding-left] duration-300 ${
+        isPinned ? "md:pl-60" : "md:pl-20"
+      }`}>
         {activeView === 'licitaciones' && (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-[330px_1fr]">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-[330px_1fr] w-full">
             {/* Left Sidebar inside Licitaciones: Search + Cards List */}
             <aside className={`space-y-3 ${mobileVista === "detalle" ? "hidden md:block" : ""}`}>
               <div className="flex gap-2">
@@ -378,7 +395,7 @@ function MainAppContent() {
             </aside>
 
             {/* Right Main Section: Master-Detail view */}
-            <section className={mobileVista === "lista" ? "hidden md:block" : ""}>
+            <section className={`min-w-0 flex-1 ${mobileVista === "lista" ? "hidden md:block" : ""}`}>
               {selectedLicitacion ? (
                 <LicitacionMasterDetail
                   licitacion={selectedLicitacion}
