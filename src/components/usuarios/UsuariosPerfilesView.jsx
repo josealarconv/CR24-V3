@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, Plus, Edit2, Lock, Trash2, AlertCircle } from 'lucide-react';
-import { Button, Badge, Card, Modal, Input } from '../ui/Components';
+import { ShieldCheck, UserPlus, Plus, Edit2, Trash2 } from 'lucide-react';
+import {
+  Badge, Modal, TextInput, Field, PrimaryBtn, GhostBtn, IconBtn, Empty, useConfirm
+} from '../ui/Components';
 import { getActiveUser } from '../../services/authService';
 
 export default function UsuariosPerfilesView({
@@ -13,11 +15,9 @@ export default function UsuariosPerfilesView({
   onDeleteUsuario
 }) {
   const activeUser = getActiveUser();
-  const isMasterLogged = activeUser?.email?.toLowerCase() === 'josealarconv@gmail.com';
 
   const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'perfiles'
 
-  // Assignable profiles for new/edited users (excludes SuperAdmin Master)
   const assignableProfiles = perfiles.filter(p => p.id !== 'PRF-SUPERADMIN');
 
   // New / Edit User Form State
@@ -28,40 +28,13 @@ export default function UsuariosPerfilesView({
   const [userPerfilId, setUserPerfilId] = useState(assignableProfiles[0]?.id || 'PRF-ADMIN');
   const [userValidationError, setUserValidationError] = useState(null);
 
-  // Delete User State
-  const [deletingUserEmail, setDeletingUserEmail] = useState(null);
-
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [profileNombre, setProfileNombre] = useState('');
   const [profileDesc, setProfileDesc] = useState('');
 
-  // Delete Profile Modal State
-  const [deletingPerfilObj, setDeletingPerfilObj] = useState(null);
-  const [deletingPerfilErrorMsg, setDeletingPerfilErrorMsg] = useState(null);
-
-  const modulesList = [
-    { id: 'licitaciones', name: 'Licitaciones' },
-    { id: 'clientes', name: 'Clientes' },
-    { id: 'proveedores', name: 'Proveedores' },
-    { id: 'consultas', name: 'Consultas de Precios' },
-    { id: 'cotizaciones', name: 'Cotizaciones PDF' },
-    { id: 'anexos', name: 'Anexos' },
-    { id: 'usuarios', name: 'Usuarios y Acceso' },
-    { id: 'perfiles', name: 'Perfiles de Acceso' },
-    { id: 'configuracion', name: 'Configuración de Empresa' }
-  ];
-
-  const createDefaultPermissions = () => {
-    const p = {};
-    modulesList.forEach(m => {
-      p[m.id] = { ver: true, agregar: true, editar: true, eliminar: false, alcance: 'todos' };
-    });
-    return p;
-  };
-
-  const [permissionsMatrix, setPermissionsMatrix] = useState(createDefaultPermissions());
+  const confirmar = useConfirm();
 
   const getPerfilNombre = (perfilId) => {
     const p = perfiles.find(item => item.id === perfilId);
@@ -94,652 +67,232 @@ export default function UsuariosPerfilesView({
     const cleanNombre = userNombre.trim();
 
     if (!cleanEmail || !cleanNombre || !userPerfilId) {
-      setUserValidationError('Campos obligatorios pendientes: Todos los campos marcados con (*) son requeridos.');
+      setUserValidationError('Todos los campos son obligatorios.');
       return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      setUserValidationError('El correo electrónico no tiene un formato válido (ejemplo: usuario@suministrosorion.cl).');
-      return;
-    }
-
-    let finalPerfilId = userPerfilId;
-
-    if (cleanEmail !== 'josealarconv@gmail.com' && finalPerfilId === 'PRF-SUPERADMIN') {
-      finalPerfilId = 'PRF-ADMIN';
     }
 
     onSaveUsuario({
       email: cleanEmail,
       nombre: cleanNombre,
-      perfilId: finalPerfilId,
+      perfilId: userPerfilId,
       activo: editingUser ? editingUser.activo : true,
       fechaRegistro: editingUser ? editingUser.fechaRegistro : new Date().toISOString().split('T')[0]
     });
 
     setShowUserModal(false);
-    setEditingUser(null);
-    setUserEmail('');
-    setUserNombre('');
-    setUserValidationError(null);
   };
 
-  const confirmDeleteUser = () => {
-    if (deletingUserEmail && onDeleteUsuario) {
-      onDeleteUsuario(deletingUserEmail);
-    }
-    setDeletingUserEmail(null);
-  };
-
-  const handleOpenDeletePerfil = (profile) => {
-    setDeletingPerfilObj(profile);
-    const assignedCount = usuarios.filter(u => u.perfilId === profile.id).length;
-    if (assignedCount > 0) {
-      setDeletingPerfilErrorMsg(`No se puede eliminar el perfil "${profile.nombre}" porque actualmente hay ${assignedCount} usuario(s) asignado(s) a él. Por favor reasigna sus perfiles antes de eliminarlo.`);
-    } else {
-      setDeletingPerfilErrorMsg(null);
-    }
-  };
-
-  const confirmDeletePerfil = () => {
-    if (deletingPerfilObj && onDeletePerfil && !deletingPerfilErrorMsg) {
-      onDeletePerfil(deletingPerfilObj.id);
-    }
-    setDeletingPerfilObj(null);
-    setDeletingPerfilErrorMsg(null);
-  };
-
-  const handleOpenEditProfile = (profile) => {
-    setEditingProfile(profile);
-    setProfileNombre(profile ? profile.nombre : '');
-    setProfileDesc(profile ? profile.descripcion || '' : '');
-
-    const base = createDefaultPermissions();
-    if (profile && profile.permisos) {
-      Object.keys(base).forEach(modId => {
-        if (profile.permisos[modId]) {
-          base[modId] = { ...base[modId], ...profile.permisos[modId] };
-        }
-      });
-    }
-    setPermissionsMatrix(base);
-    setShowProfileModal(true);
-  };
-
-  const handleSaveProfileSubmit = (e) => {
-    e.preventDefault();
-    if (!profileNombre.trim()) return;
-
-    let finalPermissions = { ...permissionsMatrix };
-    if (editingProfile && ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile.id)) {
-      finalPermissions.usuarios = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
-      finalPermissions.perfiles = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
-      finalPermissions.configuracion = { ver: true, agregar: true, editar: true, eliminar: true, alcance: 'todos' };
-    }
-
-    onSavePerfil({
-      id: editingProfile ? editingProfile.id : `PRF-${Date.now().toString().slice(-4)}`,
-      nombre: profileNombre.trim(),
-      descripcion: profileDesc.trim(),
-      permisos: finalPermissions,
-      esProtegido: ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id)
+  const handleDeleteUserClick = async (u) => {
+    if (u.email.toLowerCase() === 'josealarconv@gmail.com') return;
+    const ok = await confirmar({
+      titulo: "¿Eliminar usuario?",
+      mensaje: u.nombre || u.email,
+      detalle: "Se quitarán los permisos de acceso de este usuario."
     });
+    if (ok && onDeleteUsuario) {
+      onDeleteUsuario(u.email);
+    }
+  };
 
-    setShowProfileModal(false);
+  const handleOpenCreateProfile = () => {
     setEditingProfile(null);
     setProfileNombre('');
     setProfileDesc('');
+    setShowProfileModal(true);
   };
 
-  const updateMatrixField = (moduleId, action, value) => {
-    if (['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id) && ['usuarios', 'perfiles', 'configuracion'].includes(moduleId)) {
+  const handleOpenEditProfile = (perfil) => {
+    setEditingProfile(perfil);
+    setProfileNombre(perfil.nombre);
+    setProfileDesc(perfil.descripcion || '');
+    setShowProfileModal(true);
+  };
+
+  const handleProfileFormSubmit = (e) => {
+    e.preventDefault();
+    if (!profileNombre.trim()) return;
+
+    const perfilId = editingProfile ? editingProfile.id : 'PRF-' + Date.now().toString(36).toUpperCase();
+    onSavePerfil({
+      id: perfilId,
+      nombre: profileNombre.trim(),
+      descripcion: profileDesc.trim(),
+      esProtegido: editingProfile ? editingProfile.esProtegido : false,
+      permisos: editingProfile ? editingProfile.permisos : {}
+    });
+
+    setShowProfileModal(false);
+  };
+
+  const handleDeleteProfileClick = async (perfil) => {
+    if (perfil.id === 'PRF-SUPERADMIN' || perfil.esProtegido) {
+      await confirmar({
+        titulo: "Perfil protegido",
+        mensaje: "Este perfil no puede ser eliminado por ser base del sistema.",
+        textoConfirmar: "Entendido"
+      });
       return;
     }
-
-    setPermissionsMatrix(prev => {
-      const currentModuleObj = prev[moduleId] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
-      return {
-        ...prev,
-        [moduleId]: {
-          ...currentModuleObj,
-          [action]: value
-        }
-      };
+    const hasUsers = usuarios.some(u => u.perfilId === perfil.id);
+    if (hasUsers) {
+      await confirmar({
+        titulo: "Perfil en uso",
+        mensaje: "Hay usuarios asignados a este perfil. Reasígnalos antes de eliminarlo.",
+        textoConfirmar: "Entendido"
+      });
+      return;
+    }
+    const ok = await confirmar({
+      titulo: "¿Eliminar perfil?",
+      mensaje: perfil.nombre,
+      detalle: "Se borrará la definición de permisos para este perfil."
     });
+    if (ok && onDeletePerfil) {
+      onDeletePerfil(perfil.id);
+    }
   };
 
   return (
-    <div className="space-y-4 w-full">
-      {/* Action Header Banner (100% Screen Width) */}
-      <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-        <div>
-          <h1 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
-            <span>Gestión de Usuarios y Perfiles</span>
-          </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Administración de usuarios y perfiles de acceso del sistema.
-          </p>
+    <div className="space-y-4">
+      {/* Tab Selector Header */}
+      <div className="flex items-center justify-between border-b border-[#EDEFF3] pb-3">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('usuarios')}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+              activeTab === 'usuarios' ? "bg-[#2B3A67] text-white" : "border border-[#DDE1E8] bg-white text-[#5B6478]"
+            }`}
+          >
+            Usuarios ({usuarios.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('perfiles')}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+              activeTab === 'perfiles' ? "bg-[#2B3A67] text-white" : "border border-[#DDE1E8] bg-white text-[#5B6478]"
+            }`}
+          >
+            Perfiles ({perfiles.length})
+          </button>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {activeTab === 'usuarios' ? (
-            <Button variant="primary" size="sm" onClick={handleOpenCreateUser}>
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Registrar Usuario</span>
-            </Button>
-          ) : (
-            <Button variant="primary" size="sm" onClick={() => handleOpenEditProfile(null)}>
-              <Plus className="w-3.5 h-3.5" />
-              <span>Crear Nuevo Perfil</span>
-            </Button>
-          )}
-        </div>
+        {activeTab === 'usuarios' ? (
+          <PrimaryBtn onClick={handleOpenCreateUser}>
+            <UserPlus size={15} />
+            <span>Nuevo Usuario</span>
+          </PrimaryBtn>
+        ) : (
+          <PrimaryBtn onClick={handleOpenCreateProfile}>
+            <Plus size={15} />
+            <span>Nuevo Perfil</span>
+          </PrimaryBtn>
+        )}
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-zinc-800 space-x-4 w-full">
-        <button
-          onClick={() => setActiveTab('usuarios')}
-          className={`pb-2 text-xs font-medium border-b-2 transition-all cursor-pointer ${
-            activeTab === 'usuarios'
-              ? 'border-blue-500 text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          Usuarios ({usuarios.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('perfiles')}
-          className={`pb-2 text-xs font-medium border-b-2 transition-all cursor-pointer ${
-            activeTab === 'perfiles'
-              ? 'border-blue-500 text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          Perfiles ({perfiles.length})
-        </button>
-      </div>
-
-      {/* TAB 1: LISTA BLANCA DE USUARIOS */}
+      {/* Tab 1: Usuarios List */}
       {activeTab === 'usuarios' && (
-        <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xs w-full">
-          <table className="w-full text-left text-xs text-zinc-300">
-            <thead className="bg-zinc-900/80 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
-              <tr>
-                <th className="px-4 py-3">Correo Electrónico</th>
-                <th className="px-4 py-3">Nombre Completo</th>
-                <th className="px-4 py-3">Perfil Asignado</th>
-                <th className="px-4 py-3">Fecha Registro</th>
-                <th className="px-4 py-3">Estado Acceso</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60 font-mono">
-              {usuarios.map((u) => {
-                const isRowMaster = u.email.toLowerCase() === 'josealarconv@gmail.com' || u.perfilId === 'PRF-SUPERADMIN';
-                const isRowAdmin = u.perfilId === 'PRF-ADMIN';
-
-                const canModifyRow = isRowMaster
-                  ? false
-                  : isRowAdmin
-                  ? isMasterLogged
-                  : true;
-
-                return (
-                  <tr key={u.email} className="hover:bg-zinc-800/40 transition-colors">
-                    {/* Clean Email Column */}
-                    <td className="px-4 py-3 font-semibold text-zinc-100 font-mono">
-                      {u.email}
-                    </td>
-
-                    <td className="px-4 py-3 font-sans text-zinc-200">
-                      {u.nombre}
-                    </td>
-
-                    {/* Perfil Asignado Column */}
-                    <td className="px-4 py-3 font-sans">
-                      {u.perfilId === 'PRF-SUPERADMIN' || isRowMaster ? (
-                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/60 border border-amber-800/80 text-amber-300">
-                          <span>SuperAdmin Master</span>
-                        </span>
-                      ) : isRowAdmin ? (
-                        <Badge variant="warning">Administrador</Badge>
-                      ) : (
-                        <Badge variant="info">{getPerfilNombre(u.perfilId)}</Badge>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3 text-zinc-400">
-                      {u.fechaRegistro || '2025-01-01'}
-                    </td>
-                    
-                    {/* Estado Acceso Column */}
-                    <td className="px-4 py-3 font-sans">
-                      <button
-                        type="button"
-                        disabled={!canModifyRow}
-                        onClick={() => onToggleUsuarioActivo(u.email)}
-                        className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
-                          u.activo
-                            ? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-400 hover:bg-emerald-900/80 cursor-pointer'
-                            : 'bg-red-950/60 border-red-800/80 text-red-400 hover:bg-red-900/80 cursor-pointer'
-                        } disabled:opacity-60 disabled:cursor-not-allowed`}
-                        title={canModifyRow ? (u.activo ? "Hacer clic para Desactivar Acceso" : "Hacer clic para Activar Acceso") : "Estado de usuario protegido"}
-                      >
-                        {u.activo ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Activo</span>
-                          </>
-                        ) : (
-                          <>
-                            <X className="w-3.5 h-3.5 text-red-400" />
-                            <span>Bloqueado</span>
-                          </>
-                        )}
-                      </button>
-                    </td>
-
-                    {/* Acciones Column */}
-                    <td className="px-4 py-3 text-right font-sans">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        {canModifyRow ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditUser(u)}
-                              className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 transition-colors cursor-pointer"
-                              title="Editar Nombre y Perfil"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setDeletingUserEmail(u.email)}
-                              className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
-                              title="Eliminar de Lista Blanca"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        ) : (
-                          <Lock className="w-3.5 h-3.5 text-zinc-600" title={isRowMaster ? "Usuario Master protegido inmutable" : "Solo el SuperAdmin Master puede gestionar cuentas Administradoras"} />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* TAB 2: MATRIZ DE PERFILES CONFIGURABLE */}
-      {activeTab === 'perfiles' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-          {perfiles.map((p) => {
-            const isProtected = ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(p.id) || p.esProtegido;
-            const assignedUsersCount = usuarios.filter(u => u.perfilId === p.id).length;
-
-            return (
-              <Card key={p.id} className="space-y-3 flex flex-col justify-between w-full">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1.5">
-                      <h3 className="text-sm font-bold text-zinc-100 font-mono">{p.nombre}</h3>
-                      {isProtected && <Lock className="w-3.5 h-3.5 text-amber-400" title="Perfil protegido del sistema" />}
-                    </div>
-                    <Badge variant={isProtected ? 'warning' : 'default'}>{p.id}</Badge>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {usuarios.map((u) => (
+            <div key={u.email} className="rounded-xl border border-[#EDEFF3] bg-white p-4 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 style={{ fontFamily: "'Space Grotesk',sans-serif" }} className="font-bold text-sm text-[#131A2C]">{u.nombre}</h3>
+                    <p className="font-mono text-xs text-[#8A93A6]">{u.email}</p>
                   </div>
-                  <p className="text-xs text-zinc-400 mt-1">{p.descripcion}</p>
-
-                  {isProtected ? (
-                    <p className="text-[10px] text-amber-400/90 font-mono mt-1.5 bg-amber-950/30 p-1.5 rounded border border-amber-800/40">
-                      Perfil protegido del sistema. No se puede eliminar por seguridad.
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-zinc-400 font-mono mt-1.5 bg-zinc-900/60 p-1.5 rounded border border-zinc-800/60 flex items-center justify-between">
-                      <span>Usuarios asignados:</span>
-                      <span className="font-bold text-zinc-200">{assignedUsersCount} usuario(s)</span>
-                    </p>
-                  )}
-
-                  {/* Clarified Actions Summary in Full Natural Spanish */}
-                  <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2 text-xs">
-                    <span className="text-zinc-500 block font-mono text-[10px] font-semibold uppercase">Permisos del Perfil:</span>
-                    {Object.entries(p.permisos || {}).slice(0, 6).map(([mod, perm]) => {
-                      const actionsList = [];
-                      if (perm?.ver) actionsList.push('Ver');
-                      if (perm?.agregar) actionsList.push('Crear');
-                      if (perm?.editar) actionsList.push('Editar');
-                      if (perm?.eliminar) actionsList.push('Eliminar');
-
-                      const scopeText = perm?.alcance === 'propios' ? 'Solo creados por mí' : 'Toda la empresa';
-
-                      return (
-                        <div key={mod} className="flex flex-col sm:flex-row sm:items-center justify-between text-zinc-300 text-[11px] gap-0.5 border-b border-zinc-900/60 pb-1">
-                          <span className="capitalize font-medium text-zinc-200">{mod}:</span>
-                          <span className="font-mono text-zinc-400 text-[10px]">
-                            {actionsList.length > 0 ? actionsList.join(' • ') : 'Sin acceso'}
-                            <span className="text-zinc-500 ml-1">({scopeText})</span>
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <Badge color={u.activo ? "#2F7D5A" : "#B3261E"} bg={u.activo ? "#E4F3EC" : "#FBE7E6"}>
+                    {u.activo ? "Activo" : "Inactivo"}
+                  </Badge>
                 </div>
+                <p className="mt-2 text-xs text-[#5B6478]">
+                  Perfil: <span className="font-semibold text-[#131A2C]">{getPerfilNombre(u.perfilId)}</span>
+                </p>
+              </div>
 
-                {/* Card Action Buttons (Edit Profile + Delete Profile if unassigned) */}
-                <div className="pt-3 border-t border-zinc-800 flex items-center justify-between gap-2 w-full">
-                  {!isProtected ? (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDeletePerfil(p)}
-                      className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
-                      title="Eliminar Perfil"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <div></div>
-                  )}
-
-                  {!p.esProtegido ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="px-3 py-1.5 text-xs shrink-0"
-                      onClick={() => handleOpenEditProfile(p)}
-                    >
-                      <Edit2 className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">Editar</span>
-                    </Button>
-                  ) : (
-                    <span className="text-[10px] text-zinc-500 font-mono px-2 py-1 bg-zinc-900 rounded border border-zinc-800">
-                      No editable
-                    </span>
+              <div className="mt-3 flex items-center justify-between border-t border-[#EDEFF3] pt-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleUsuarioActivo(u.email)}
+                  className="text-[11px] font-semibold text-[#2B3A67] hover:underline cursor-pointer"
+                >
+                  {u.activo ? "Desactivar" : "Activar"}
+                </button>
+                <div className="flex gap-1">
+                  <IconBtn onClick={() => handleOpenEditUser(u)} title="Editar usuario"><Edit2 size={14} /></IconBtn>
+                  {u.email.toLowerCase() !== 'josealarconv@gmail.com' && (
+                    <IconBtn onClick={() => handleDeleteUserClick(u)} title="Eliminar usuario"><Trash2 size={14} /></IconBtn>
                   )}
                 </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Modal Confirmar Eliminación de Usuario */}
-      <Modal
-        isOpen={!!deletingUserEmail}
-        onClose={() => setDeletingUserEmail(null)}
-        title="Eliminar Usuario de Lista Blanca"
-      >
-        <div className="space-y-3">
-          <p className="text-xs text-zinc-300">
-            ¿Estás seguro de que deseas eliminar permanentemente a <span className="font-mono font-bold text-zinc-100">{deletingUserEmail}</span> de la Lista Blanca?
-          </p>
-          <p className="text-xs text-red-400 bg-red-950/30 p-2 rounded border border-red-900/50">
-            Este usuario ya no podrá ingresar a la aplicación ni autenticarse con su cuenta de Google.
-          </p>
-
-          <div className="flex justify-end space-x-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={() => setDeletingUserEmail(null)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" size="sm" onClick={confirmDeleteUser}>
-              Eliminar Definitivamente
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal Confirmar o Bloquear Eliminación de Perfil */}
-      <Modal
-        isOpen={!!deletingPerfilObj}
-        onClose={() => {
-          setDeletingPerfilObj(null);
-          setDeletingPerfilErrorMsg(null);
-        }}
-        title={`Eliminar Perfil: ${deletingPerfilObj?.nombre || ''}`}
-      >
-        <div className="space-y-3 font-sans">
-          {deletingPerfilErrorMsg ? (
-            <>
-              <div className="p-3 bg-red-950/60 border border-red-800/80 text-red-300 text-xs rounded-xl flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <span>{deletingPerfilErrorMsg}</span>
               </div>
-              <div className="flex justify-end pt-2">
-                <Button variant="ghost" size="sm" onClick={() => {
-                  setDeletingPerfilObj(null);
-                  setDeletingPerfilErrorMsg(null);
-                }}>
-                  Entendido
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-xs text-zinc-300">
-                ¿Estás seguro de que deseas eliminar el perfil <span className="font-bold text-zinc-100 font-mono">{deletingPerfilObj?.nombre}</span> ({deletingPerfilObj?.id})?
-              </p>
-              <p className="text-xs text-amber-400 bg-amber-950/30 p-2 rounded border border-amber-900/50">
-                Este perfil no tiene usuarios asignados actualmente. Esta acción eliminará el perfil del catálogo.
-              </p>
-              <div className="flex justify-end space-x-2 pt-2">
-                <Button variant="ghost" size="sm" onClick={() => setDeletingPerfilObj(null)}>
-                  Cancelar
-                </Button>
-                <Button variant="danger" size="sm" onClick={confirmDeletePerfil}>
-                  Eliminar Perfil
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
-
-      {/* Modal Crear / Editar Usuario con Validación Estricta */}
-      <Modal
-        isOpen={showUserModal}
-        onClose={() => {
-          setShowUserModal(false);
-          setEditingUser(null);
-          setUserValidationError(null);
-        }}
-        title={editingUser ? `Editar Usuario: ${editingUser.email}` : 'Autorizar Usuario en Lista Blanca'}
-      >
-        <form onSubmit={handleUserFormSubmit} className="space-y-3">
-          {userValidationError && (
-            <div className="p-3 bg-red-950/60 border border-red-800/80 text-red-300 text-xs rounded-xl flex items-start space-x-2 font-sans">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <span>{userValidationError}</span>
             </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Correo Electrónico <span className="text-red-400 font-bold">*</span>
-            </label>
-            <Input
-              type="email"
-              value={userEmail}
-              onChange={(e) => {
-                setUserEmail(e.target.value);
-                setUserValidationError(null);
-              }}
-              placeholder="ejemplo@suministrosorion.cl"
-              required
-              disabled={!!editingUser}
-            />
-          </div>
+      {/* Tab 2: Perfiles List */}
+      {activeTab === 'perfiles' && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {perfiles.map((p) => (
+            <div key={p.id} className="rounded-xl border border-[#EDEFF3] bg-white p-4 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 style={{ fontFamily: "'Space Grotesk',sans-serif" }} className="font-bold text-sm text-[#131A2C]">{p.nombre}</h3>
+                    <p className="font-mono text-xs text-[#8A93A6]">{p.id}</p>
+                  </div>
+                  {p.esProtegido && <Badge color="#2B3A67" bg="#EEF0F7">Sistema</Badge>}
+                </div>
+                <p className="mt-2 text-xs text-[#5B6478]">{p.descripcion || 'Sin descripción'}</p>
+              </div>
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Nombre Completo <span className="text-red-400 font-bold">*</span>
-            </label>
-            <Input
-              type="text"
-              value={userNombre}
-              onChange={(e) => {
-                setUserNombre(e.target.value);
-                setUserValidationError(null);
-              }}
-              placeholder="Ej: Juan Pérez"
-              required
-            />
-          </div>
+              {!p.esProtegido && (
+                <div className="mt-3 flex items-center justify-end gap-1 border-t border-[#EDEFF3] pt-2">
+                  <IconBtn onClick={() => handleOpenEditProfile(p)} title="Editar perfil"><Edit2 size={14} /></IconBtn>
+                  <IconBtn onClick={() => handleDeleteProfileClick(p)} title="Eliminar perfil"><Trash2 size={14} /></IconBtn>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Perfil de Acceso Asignado <span className="text-red-400 font-bold">*</span>
-            </label>
-            <select
-              value={userPerfilId}
-              onChange={(e) => {
-                setUserPerfilId(e.target.value);
-                setUserValidationError(null);
-              }}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none"
-              required
-            >
-              {assignableProfiles.map(p => (
+      {/* USER MODAL */}
+      <Modal isOpen={showUserModal} onClose={() => setShowUserModal(false)} title={editingUser ? "Editar Usuario" : "Crear Usuario"}>
+        <form onSubmit={handleUserFormSubmit} className="space-y-3">
+          {userValidationError && <p className="text-xs text-[#B3261E]">{userValidationError}</p>}
+          <Field label="Nombre Completo *">
+            <TextInput required value={userNombre} onChange={(e) => setUserNombre(e.target.value)} placeholder="Ej. Juan Pérez" />
+          </Field>
+          <Field label="Correo Electrónico *">
+            <TextInput type="email" required disabled={!!editingUser} value={userEmail} onChange={(e) => setUserEmail(e.target.value)} placeholder="juan@empresa.com" />
+          </Field>
+          <Field label="Perfil de Permisos *">
+            <select value={userPerfilId} onChange={(e) => setUserPerfilId(e.target.value)} className="w-full rounded-lg border border-[#DDE1E8] bg-white px-3 py-2 text-sm text-[#131A2C]">
+              {assignableProfiles.map((p) => (
                 <option key={p.id} value={p.id}>{p.nombre}</option>
               ))}
             </select>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => {
-              setShowUserModal(false);
-              setEditingUser(null);
-              setUserValidationError(null);
-            }}>
-              Cancelar
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
-              {editingUser ? 'Guardar Cambios' : 'Guardar Usuario'}
-            </Button>
+          </Field>
+          <div className="flex justify-end gap-2 border-t border-[#EDEFF3] pt-3">
+            <GhostBtn onClick={() => setShowUserModal(false)}>Cancelar</GhostBtn>
+            <PrimaryBtn type="submit">{editingUser ? "Guardar" : "Crear Usuario"}</PrimaryBtn>
           </div>
         </form>
       </Modal>
 
-      {/* Modal Editar Perfil & Matriz Permisos */}
-      <Modal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        title={editingProfile ? `Configurar Perfil: ${editingProfile.nombre}` : 'Crear Perfil de Acceso'}
-      >
-        <form onSubmit={handleSaveProfileSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre del Perfil</label>
-            <Input
-              type="text"
-              value={profileNombre}
-              onChange={(e) => setProfileNombre(e.target.value)}
-              placeholder="Ej: Analista de Compras"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Descripción del Perfil</label>
-            <Input
-              type="text"
-              value={profileDesc}
-              onChange={(e) => setProfileDesc(e.target.value)}
-              placeholder="Descripción breve de responsabilidades..."
-            />
-          </div>
-
-          {['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id) && (
-            <p className="text-xs text-amber-400 bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/60 font-mono">
-              Los permisos de los módulos de seguridad (Usuarios, Perfiles y Configuración) permanecen bloqueados en este perfil para garantizar el acceso continuo del administrador.
-            </p>
-          )}
-
-          <div>
-            <h4 className="text-xs font-bold text-zinc-300 uppercase font-mono mb-2">Matriz de Acciones por Módulo</h4>
-            <div className="space-y-2.5 bg-zinc-950 p-3 rounded-lg border border-zinc-800">
-              {modulesList.map(mod => {
-                const p = permissionsMatrix[mod.id] || { ver: false, agregar: false, editar: false, eliminar: false, alcance: 'todos' };
-                const isLockedAdminMod = ['PRF-SUPERADMIN', 'PRF-ADMIN'].includes(editingProfile?.id) && ['usuarios', 'perfiles', 'configuracion'].includes(mod.id);
-
-                return (
-                  <div key={mod.id} className="p-2 bg-zinc-900/60 rounded border border-zinc-800 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1.5">
-                        <span className="font-semibold text-zinc-200">{mod.name}</span>
-                        {isLockedAdminMod && <Lock className="w-3 h-3 text-amber-400" title="Protegido por el sistema" />}
-                      </div>
-                      <select
-                        value={p.alcance || 'todos'}
-                        disabled={isLockedAdminMod}
-                        onChange={(e) => updateMatrixField(mod.id, 'alcance', e.target.value)}
-                        className="bg-zinc-950 text-[11px] text-zinc-400 border border-zinc-800 rounded px-1.5 py-0.5 disabled:opacity-60"
-                      >
-                        <option value="todos">Toda la Empresa</option>
-                        <option value="propios">Solo creados por mí</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 text-[11px] text-zinc-400 font-mono">
-                      <label className="flex items-center space-x-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isLockedAdminMod ? true : !!p.ver}
-                          disabled={isLockedAdminMod}
-                          onChange={(e) => updateMatrixField(mod.id, 'ver', e.target.checked)}
-                          className="rounded border-zinc-800 text-blue-600 focus:ring-0"
-                        />
-                        <span>Ver</span>
-                      </label>
-                      <label className="flex items-center space-x-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isLockedAdminMod ? true : !!p.agregar}
-                          disabled={isLockedAdminMod}
-                          onChange={(e) => updateMatrixField(mod.id, 'agregar', e.target.checked)}
-                          className="rounded border-zinc-800 text-blue-600 focus:ring-0"
-                        />
-                        <span>Crear</span>
-                      </label>
-                      <label className="flex items-center space-x-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isLockedAdminMod ? true : !!p.editar}
-                          disabled={isLockedAdminMod}
-                          onChange={(e) => updateMatrixField(mod.id, 'editar', e.target.checked)}
-                          className="rounded border-zinc-800 text-blue-600 focus:ring-0"
-                        />
-                        <span>Editar</span>
-                      </label>
-                      <label className="flex items-center space-x-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isLockedAdminMod ? true : !!p.eliminar}
-                          disabled={isLockedAdminMod}
-                          onChange={(e) => updateMatrixField(mod.id, 'eliminar', e.target.checked)}
-                          className="rounded border-zinc-800 text-blue-600 focus:ring-0"
-                        />
-                        <span>Eliminar</span>
-                      </label>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setShowProfileModal(false)}>
-              Cancelar
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
-              Guardar Perfil
-            </Button>
+      {/* PROFILE MODAL */}
+      <Modal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} title={editingProfile ? "Editar Perfil" : "Crear Perfil"}>
+        <form onSubmit={handleProfileFormSubmit} className="space-y-3">
+          <Field label="Nombre del Perfil *">
+            <TextInput required value={profileNombre} onChange={(e) => setProfileNombre(e.target.value)} placeholder="Ej. Supervisor de Compras" />
+          </Field>
+          <Field label="Descripción">
+            <TextInput value={profileDesc} onChange={(e) => setProfileDesc(e.target.value)} placeholder="Descripción breve del alcance" />
+          </Field>
+          <div className="flex justify-end gap-2 border-t border-[#EDEFF3] pt-3">
+            <GhostBtn onClick={() => setShowProfileModal(false)}>Cancelar</GhostBtn>
+            <PrimaryBtn type="submit">{editingProfile ? "Guardar" : "Crear Perfil"}</PrimaryBtn>
           </div>
         </form>
       </Modal>

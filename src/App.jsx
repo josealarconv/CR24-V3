@@ -1,10 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/common/Header';
 import LoginScreen from './components/auth/LoginScreen';
 import LicitacionMasterDetail from './components/licitaciones/LicitacionMasterDetail';
-import ConsultasTableView from './components/appsheet/ConsultasTableView';
-import CotizacionesTableView from './components/appsheet/CotizacionesTableView';
-import AnexosTableView from './components/appsheet/AnexosTableView';
 import ClientesList from './components/clientes/ClientesList';
 import ProveedoresList from './components/proveedores/ProveedoresList';
 import ConfiguracionView from './components/configuracion/ConfiguracionView';
@@ -30,13 +27,12 @@ import {
   getActiveWorkspace,
   getActiveWorkspaceId,
   setActiveWorkspace,
-  isCreator,
 } from './services/authService';
 import {
-  estadoInfo, emptyLicitacion, fmtMoney, num
+  estadoInfo, emptyLicitacion, fmtMoney
 } from './services/calculationService';
 import {
-  Search, Plus, PackageSearch, Building2, Clock
+  Search, Plus, PackageSearch, Building2
 } from 'lucide-react';
 
 /* Sidebar Tender List Item Card */
@@ -122,14 +118,11 @@ function MainAppContent() {
 
   const wsId = getActiveWorkspaceId();
 
-  // Load normalized workspace-scoped licitaciones
+  // Load normalized workspace-scoped data
   const licitaciones = getNormalizedLicitaciones(wsId);
   const clientes = getWorkspaceData('CLIENTES', wsId);
   const proveedores = getWorkspaceData('PROVEEDORES', wsId);
-  const detalles = getWorkspaceData('DETALLES', wsId);
   const consultas = getWorkspaceData('CONSULTAS', wsId);
-  const cotizaciones = getWorkspaceData('COTIZACIONES', wsId);
-  const anexos = getWorkspaceData('ANEXOS', wsId);
   const usuarios = getData('USUARIOS').filter(u => u.workspaceId === wsId || (wsId === 'WS-CREATOR' && u.workspaceId === null));
   const perfiles = getData('PERFILES').filter(p => p.workspaceId === wsId || (wsId === 'WS-CREATOR' && p.workspaceId === null));
   const configuracion = activeWs?.config || getData('CONFIGURACION') || {};
@@ -198,7 +191,7 @@ function MainAppContent() {
   };
 
   const handleAddCliente = (newCli) => {
-    const updated = addItem('CLIENTES', { ...newCli, workspaceId: wsId });
+    addItem('CLIENTES', { ...newCli, workspaceId: wsId });
     setDataVersion((v) => v + 1);
   };
 
@@ -217,7 +210,7 @@ function MainAppContent() {
   };
 
   const handleAddProveedor = (newPrv) => {
-    const updated = addItem('PROVEEDORES', { ...newPrv, workspaceId: wsId });
+    addItem('PROVEEDORES', { ...newPrv, workspaceId: wsId });
     setDataVersion((v) => v + 1);
   };
 
@@ -232,11 +225,6 @@ function MainAppContent() {
   const handleDeleteProveedor = (proveedorId) => {
     if (!proveedorId) return;
     deleteItem('PROVEEDORES', 'id', proveedorId);
-    setDataVersion((v) => v + 1);
-  };
-
-  const handleDeleteAnexo = (anexoId) => {
-    deleteItem('ANEXOS', 'id', String(anexoId).trim());
     setDataVersion((v) => v + 1);
   };
 
@@ -311,8 +299,8 @@ function MainAppContent() {
     refreshWorkspace();
   };
 
-  const handleUpdateWorkspace = (wsId, updates) => {
-    updateWorkspace(wsId, updates);
+  const handleUpdateWorkspace = (wsIdToUpdate, updates) => {
+    updateWorkspace(wsIdToUpdate, updates);
     refreshWorkspace();
   };
 
@@ -332,18 +320,11 @@ function MainAppContent() {
           setActiveView(v);
           setMobileVista('lista');
         }}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedMonth={selectedMonth}
-        setSelectedMonth={setSelectedMonth}
         counts={{
           licitaciones: filteredLicitaciones.length,
           clientes: clientes.length,
           proveedores: proveedores.length,
-          consultas: consultas.length,
-          cotizaciones: cotizaciones.length,
-          anexos: anexos.length,
-          usuarios: usuarios.length
+          configuracion: 0
         }}
         activeWorkspace={activeWs}
         allWorkspaces={allWorkspaces}
@@ -351,10 +332,11 @@ function MainAppContent() {
         onLogout={() => setCurrentUser(null)}
       />
 
-      <main className="mx-auto flex-1 w-full max-w-[1400px] px-4 py-4">
+      {/* Main Content Area: Padding left on web to account for vertical sidebar */}
+      <main className="mx-auto flex-1 w-full max-w-[1400px] px-4 py-4 md:pl-20 transition-all duration-300">
         {activeView === 'licitaciones' && (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-[330px_1fr]">
-            {/* Left Sidebar: Search + Cards List */}
+            {/* Left Sidebar inside Licitaciones: Search + Cards List */}
             <aside className={`space-y-3 ${mobileVista === "detalle" ? "hidden md:block" : ""}`}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -428,31 +410,6 @@ function MainAppContent() {
             onAddProveedor={handleAddProveedor}
             onEditProveedor={handleEditProveedor}
             onDeleteProveedor={handleDeleteProveedor}
-          />
-        )}
-
-        {activeView === 'consultas' && (
-          <ConsultasTableView
-            consultas={consultas}
-            proveedores={proveedores}
-            detalles={detalles}
-          />
-        )}
-
-        {activeView === 'cotizaciones' && (
-          <CotizacionesTableView
-            cotizaciones={cotizaciones}
-            clientes={clientes}
-            licitaciones={licitaciones}
-            detalles={detalles}
-            consultas={consultas}
-          />
-        )}
-
-        {activeView === 'anexos' && (
-          <AnexosTableView
-            anexos={anexos}
-            onDeleteAnexo={handleDeleteAnexo}
           />
         )}
 

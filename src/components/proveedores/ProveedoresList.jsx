@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Package, Plus, Mail, Phone, Globe, Edit2, Trash2, X, Save, AlertCircle, AlertTriangle } from 'lucide-react';
-import { Button, Badge, Card, Modal, Input } from '../ui/Components';
+import { Building2, Plus, Mail, Phone, Globe, Edit2, Trash2 } from 'lucide-react';
+import {
+  Badge, Modal, TextInput, TextArea, Field, PrimaryBtn, GhostBtn, IconBtn, Empty, useConfirm
+} from '../ui/Components';
 
 export default function ProveedoresList({ proveedores = [], consultas = [], onAddProveedor, onEditProveedor, onDeleteProveedor }) {
   const [showModal, setShowModal] = useState(false);
   const [editingProveedor, setEditingProveedor] = useState(null);
-  const [deletingProveedor, setDeletingProveedor] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
+  const confirmar = useConfirm();
 
   // Form Fields
   const [nombre, setNombre] = useState('');
@@ -17,6 +18,7 @@ export default function ProveedoresList({ proveedores = [], consultas = [], onAd
   const [sitioWeb, setSitioWeb] = useState('');
   const [condiciones, setCondiciones] = useState('');
   const [notas, setNotas] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const resetForm = () => {
     setNombre('');
@@ -83,109 +85,122 @@ export default function ProveedoresList({ proveedores = [], consultas = [], onAd
     setEditingProveedor(null);
   };
 
-  const handleOpenDelete = (p) => {
+  const handleDelete = async (p) => {
     const consultasCount = consultas.filter(c => c.proveedorId === p.id).length;
     if (consultasCount > 0) {
-      setDeleteError(`No se puede eliminar. Este proveedor tiene ${consultasCount} consulta(s) asociada(s). Debe eliminar las consultas primero.`);
-    } else {
-      setDeleteError(null);
+      await confirmar({
+        titulo: "No se puede eliminar este proveedor",
+        mensaje: `${p.nombre} tiene ${consultasCount} cotización(es) o consulta(s) asociada(s).`,
+        detalle: "Debes eliminar las consultas del proveedor en sus licitaciones correspondientes.",
+        textoConfirmar: "Entendido"
+      });
+      return;
     }
-    setDeletingProveedor(p);
+    const ok = await confirmar({
+      titulo: "¿Eliminar proveedor?",
+      mensaje: p.nombre,
+      detalle: "Esta acción quitará el registro del directorio de proveedores."
+    });
+    if (ok && onDeleteProveedor) {
+      onDeleteProveedor(p.id);
+    }
   };
 
-  const handleConfirmDelete = () => {
-    if (!deletingProveedor || deleteError) return;
-    onDeleteProveedor(deletingProveedor.id);
-    setDeletingProveedor(null);
-  };
-
-  const displayRut = (p) => p.rut ? `RUT: ${p.rut}` : p.id;
+  const filteredProveedores = proveedores.filter(p =>
+    `${p.nombre} ${p.rut} ${p.contacto} ${p.email}`.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80 backdrop-blur-sm">
+    <div className="space-y-4">
+      {/* Header Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EDEFF3] bg-white p-4 shadow-xs">
         <div>
-          <h1 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-            <Package className="w-5 h-5 text-indigo-400" />
+          <h1 style={{ fontFamily: "'Space Grotesk',sans-serif" }} className="flex items-center gap-2 text-lg font-bold text-[#131A2C]">
+            <Building2 className="h-5 w-5 text-[#2B3A67]" />
             <span>Directorio Maestro de Proveedores</span>
-            <span className="text-[10px] font-mono bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400">{proveedores.length}</span>
+            <span className="rounded-full bg-[#EEF0F7] px-2 py-0.5 font-mono text-xs text-[#2B3A67]">{proveedores.length}</span>
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">Gestión de proveedores y consultas de precios asociadas.</p>
+          <p className="mt-0.5 text-xs text-[#8A93A6]">Gestión de fabricantes, distribuidores y contactos de ventas.</p>
         </div>
-        <Button variant="primary" size="md" onClick={handleOpenCreate}>
-          <Plus className="w-4 h-4" />
-          <span>Nuevo Proveedor</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <TextInput
+            placeholder="Buscar proveedor..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-48 sm:w-64"
+          />
+          <PrimaryBtn onClick={handleOpenCreate}>
+            <Plus size={16} />
+            <span>Nuevo Proveedor</span>
+          </PrimaryBtn>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {proveedores.map(p => {
-          const consultasCount = consultas.filter(c => c.proveedorId === p.id).length;
-          return (
-            <Card key={p.id} className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-zinc-100 text-sm">{p.nombre}</h3>
-                  <p className="text-[11px] text-zinc-500 font-mono">{displayRut(p)}</p>
-                </div>
-                <Badge variant="info">
-                  {consultasCount} Consultas
-                </Badge>
-              </div>
-
-              <div className="text-xs text-zinc-400 space-y-1.5 pt-2.5 border-t border-zinc-800/80">
-                <div className="flex items-center space-x-2">
-                  <Package className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>{p.contacto || 'Sin contacto directo'}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Mail className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>{p.email || 'Sin correo'}</span>
-                </div>
-                {(p.telefono) && (
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>{p.telefono}</span>
+      {/* Cards Grid */}
+      {filteredProveedores.length === 0 ? (
+        <Empty icon={Building2}>No se encontraron proveedores en este workspace.</Empty>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProveedores.map((p) => {
+            const consultasCount = consultas.filter((c) => c.proveedorId === p.id).length;
+            return (
+              <div key={p.id} className="flex flex-col justify-between rounded-xl border border-[#EDEFF3] bg-white p-4 shadow-xs hover:border-[#DDE1E8] transition">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 style={{ fontFamily: "'Space Grotesk',sans-serif" }} className="truncate text-base font-bold text-[#131A2C]">{p.nombre}</h3>
+                      <p className="font-mono text-xs text-[#8A93A6]">{p.rut ? `RUT: ${p.rut}` : p.id}</p>
+                    </div>
+                    <Badge color="#0F6E8C" bg="#E1F1F5">{consultasCount} Consultas</Badge>
                   </div>
-                )}
-                {(p.sitioWeb) && (
-                  <div className="flex items-center space-x-2">
-                    <Globe className="w-3.5 h-3.5 text-zinc-500" />
-                    <span className="truncate">{p.sitioWeb}</span>
-                  </div>
-                )}
-                {(p.condicionesComerciales || p.condiciones) && (
-                  <p className="text-[11px] text-zinc-400 bg-zinc-950/50 p-2 rounded border border-zinc-800/80 mt-2">
-                    <strong className="text-zinc-300">Condiciones:</strong> {p.condicionesComerciales || p.condiciones}
-                  </p>
-                )}
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-1 pt-2 border-t border-zinc-800/80">
-                {onEditProveedor && (
-                  <button
-                    onClick={() => handleOpenEdit(p)}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800 transition-colors cursor-pointer"
-                    title="Editar Proveedor"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {onDeleteProveedor && (
-                  <button
-                    onClick={() => handleOpenDelete(p)}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
-                    title="Eliminar Proveedor"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                  <div className="space-y-1.5 border-t border-[#EDEFF3] pt-2.5 text-xs text-[#5B6478]">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5 shrink-0 text-[#8A93A6]" />
+                      <span className="truncate">{p.contacto || 'Sin contacto asignado'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 shrink-0 text-[#8A93A6]" />
+                      <span className="truncate">{p.email || 'Sin correo registrado'}</span>
+                    </div>
+                    {p.telefono && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 shrink-0 text-[#8A93A6]" />
+                        <span className="font-mono">{p.telefono}</span>
+                      </div>
+                    )}
+                    {p.sitioWeb && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-3.5 w-3.5 shrink-0 text-[#8A93A6]" />
+                        <a href={p.sitioWeb.startsWith('http') ? p.sitioWeb : `https://${p.sitioWeb}`} target="_blank" rel="noreferrer" className="truncate text-[#2B3A67] underline">
+                          {p.sitioWeb}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {(p.condicionesComerciales || p.condiciones) && (
+                    <div className="rounded-lg bg-[#FAFAFC] p-2 text-[11px] text-[#5B6478] border border-[#EDEFF3]">
+                      <span className="font-semibold text-[#131A2C]">Condiciones: </span>
+                      {p.condicionesComerciales || p.condiciones}
+                    </div>
+                  )}
+                  {p.notas && (
+                    <p className="text-[11px] text-[#8A93A6]">
+                      {p.notas}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-3 flex items-center justify-end gap-1 border-t border-[#EDEFF3] pt-2">
+                  <IconBtn onClick={() => handleOpenEdit(p)} title="Editar proveedor"><Edit2 size={14} /></IconBtn>
+                  <IconBtn onClick={() => handleDelete(p)} title="Eliminar proveedor"><Trash2 size={14} /></IconBtn>
+                </div>
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* CREATE / EDIT MODAL */}
       <Modal
@@ -195,141 +210,37 @@ export default function ProveedoresList({ proveedores = [], consultas = [], onAd
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">
-                Razón Social <span className="text-red-400">*</span>
-              </label>
-              <Input
-                type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Nombre de la empresa"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">RUT</label>
-              <Input
-                type="text"
-                value={rut}
-                onChange={(e) => setRut(e.target.value)}
-                placeholder="Ej: 76.123.456-7 (opcional)"
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Razón Social *" className="sm:col-span-2">
+              <TextInput required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Soluciones Industriales SpA" />
+            </Field>
+            <Field label="RUT / Identificación">
+              <TextInput value={rut} onChange={(e) => setRut(e.target.value)} placeholder="77.516.671-2" className="font-mono" />
+            </Field>
+            <Field label="Contacto Comercial">
+              <TextInput value={contacto} onChange={(e) => setContacto(e.target.value)} placeholder="Ej. Felipe Silva (+56 9 9123 4567)" />
+            </Field>
+            <Field label="Correo Electrónico">
+              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ventas@proveedor.cl" />
+            </Field>
+            <Field label="Teléfono">
+              <TextInput value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+56 2 2987 6543" className="font-mono" />
+            </Field>
+            <Field label="Sitio Web" className="sm:col-span-2">
+              <TextInput value={sitioWeb} onChange={(e) => setSitioWeb(e.target.value)} placeholder="www.proveedor.cl" />
+            </Field>
+            <Field label="Condiciones Comerciales" className="sm:col-span-2">
+              <TextInput value={condiciones} onChange={(e) => setCondiciones(e.target.value)} placeholder="Ej. Crédito 15 días, descuento 5% por volumen" />
+            </Field>
+            <Field label="Notas e Insumos" className="sm:col-span-2">
+              <TextArea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Tipos de productos que ofrece, marcas principales..." />
+            </Field>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Persona de Contacto</label>
-              <Input
-                type="text"
-                value={contacto}
-                onChange={(e) => setContacto(e.target.value)}
-                placeholder="Nombre del contacto"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Correo Electrónico</label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@proveedor.cl"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Teléfono</label>
-              <Input
-                type="text"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                placeholder="+56 9 ..."
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Sitio Web</label>
-              <Input
-                type="text"
-                value={sitioWeb}
-                onChange={(e) => setSitioWeb(e.target.value)}
-                placeholder="www.proveedor.cl"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Condiciones Comerciales</label>
-            <Input
-              type="text"
-              value={condiciones}
-              onChange={(e) => setCondiciones(e.target.value)}
-              placeholder="Ej: Crédito 30 días"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Notas Internas</label>
-            <textarea
-              rows={2}
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder="Observaciones sobre este proveedor..."
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none leading-relaxed"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
-            <Button variant="ghost" size="sm" type="button" onClick={() => { setShowModal(false); setEditingProveedor(null); }}>
-              <X className="w-3.5 h-3.5" />
-              <span>Cancelar</span>
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
-              <Save className="w-3.5 h-3.5" />
-              <span>{editingProveedor ? 'Guardar Cambios' : 'Registrar Proveedor'}</span>
-            </Button>
+          <div className="flex justify-end gap-2 border-t border-[#EDEFF3] pt-3">
+            <GhostBtn onClick={() => setShowModal(false)}>Cancelar</GhostBtn>
+            <PrimaryBtn type="submit">{editingProveedor ? 'Guardar Cambios' : 'Registrar Proveedor'}</PrimaryBtn>
           </div>
         </form>
-      </Modal>
-
-      {/* DELETE CONFIRMATION MODAL */}
-      <Modal
-        isOpen={!!deletingProveedor}
-        onClose={() => setDeletingProveedor(null)}
-        title={`Eliminar: ${deletingProveedor?.nombre || ''}`}
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-3">
-          {deleteError ? (
-            <div className="flex items-start space-x-2 p-3 bg-red-950/40 border border-red-800/60 rounded-lg text-xs text-red-300">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{deleteError}</span>
-            </div>
-          ) : (
-            <div className="flex items-start space-x-2 p-3 bg-amber-950/40 border border-amber-800/60 rounded-lg text-xs text-amber-300">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>
-                ¿Estás seguro de eliminar al proveedor <strong>{deletingProveedor?.nombre}</strong>?
-                Esta acción es irreversible.
-              </span>
-            </div>
-          )}
-          <div className="flex justify-end space-x-2 pt-2 border-t border-zinc-800">
-            <Button variant="ghost" size="sm" onClick={() => setDeletingProveedor(null)}>
-              <X className="w-3.5 h-3.5" />
-              <span>Cancelar</span>
-            </Button>
-            {!deleteError && (
-              <Button variant="danger" size="sm" onClick={handleConfirmDelete}>
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Sí, Eliminar</span>
-              </Button>
-            )}
-          </div>
-        </div>
       </Modal>
     </div>
   );
