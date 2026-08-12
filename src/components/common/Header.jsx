@@ -238,8 +238,8 @@ export default function Header({
           })}
         </div>
 
-        {/* Bottom Pin Toggle Button (Web Mode only) */}
-        <div className="p-2 border-t border-[#EDEFF3]">
+        {/* Bottom Pin Toggle Button & Version Badge (Web Mode only) */}
+        <div className="p-2 border-t border-[#EDEFF3] space-y-2">
           <button
             type="button"
             onClick={onTogglePin}
@@ -253,6 +253,18 @@ export default function Header({
             {isPinned ? <PinOff size={16} className="shrink-0" /> : <Pin size={16} className="shrink-0" />}
             {isExpanded && <span className="truncate">{isPinned ? "Fijo" : "Fijar menú"}</span>}
           </button>
+
+          <div className="text-center font-mono text-[10px]">
+            {isExpanded ? (
+              <span className="inline-block rounded-md bg-[#EEF0F7] px-2 py-0.5 font-semibold text-[#2B3A67]">
+                {ASSETS.APP_VERSION} · 2026.08.11
+              </span>
+            ) : (
+              <span className="inline-block rounded-md bg-[#EEF0F7] px-1 py-0.5 font-semibold text-[#2B3A67]">
+                {ASSETS.APP_VERSION}
+              </span>
+            )}
+          </div>
         </div>
       </aside>
     </>
